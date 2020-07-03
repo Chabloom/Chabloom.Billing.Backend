@@ -13,6 +13,8 @@ namespace Payments.Backend
 {
     public class Startup
     {
+        private const string DevelopmentCorsName = "Development";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -26,6 +28,17 @@ namespace Payments.Backend
             services.AddDbContext<PaymentServiceDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
+
+            services.AddCors(options =>
+            {
+                options.AddPolicy(DevelopmentCorsName,
+                    builder =>
+                    {
+                        builder.AllowAnyOrigin()
+                            .AllowAnyHeader()
+                            .AllowAnyMethod();
+                    });
+            });
 
             services.AddControllers();
 
@@ -46,6 +59,8 @@ namespace Payments.Backend
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+
+                app.UseCors(DevelopmentCorsName);
             }
 
             app.UseSwagger();
