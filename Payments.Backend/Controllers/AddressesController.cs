@@ -88,7 +88,7 @@ namespace Payments.Backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Address>> DeleteAddress(Guid id)
+        public async Task<ActionResult<AddressViewModel>> DeleteAddress(Guid id)
         {
             var address = await _context.Addresses.FindAsync(id)
                 .ConfigureAwait(false);
@@ -101,7 +101,7 @@ namespace Payments.Backend.Controllers
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            return address;
+            return address.ToViewModel();
         }
     }
 }

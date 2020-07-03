@@ -88,7 +88,7 @@ namespace Payments.Backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Account>> DeleteAccount(Guid id)
+        public async Task<ActionResult<AccountViewModel>> DeleteAccount(Guid id)
         {
             var account = await _context.Accounts.FindAsync(id)
                 .ConfigureAwait(false);
@@ -101,7 +101,7 @@ namespace Payments.Backend.Controllers
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            return account;
+            return account.ToViewModel();
         }
     }
 }
