@@ -27,7 +27,7 @@ steps:
     publishLocation: 'Container'
 - task: Docker@2
   inputs:
-    repository: 'chbpayments'
+    containerRegistry: 'chbpayments'
+    repository: 'payments-backend-test'
     command: 'buildAndPush'
     Dockerfile: '**/Dockerfile'
-    tags: '$(Build.BuildNumber)'
