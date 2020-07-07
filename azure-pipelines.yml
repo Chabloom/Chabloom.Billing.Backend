@@ -8,9 +8,20 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    useGlobalJson: true
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'test'
 - task: Docker@2
   inputs:
     containerRegistry: 'chbpayments'
     repository: 'payments-backend-test'
     command: 'buildAndPush'
     Dockerfile: '**/Dockerfile'
+    tags: '$(Build.BuildNumber)'
