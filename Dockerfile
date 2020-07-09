@@ -3,7 +3,7 @@ WORKDIR /app
 
 RUN ls
 COPY global.json ./
-COPY Payments.Backend/* ./
+COPY Payments.Backend/ ./
 RUN ls
 RUN dotnet clean
 RUN ls
