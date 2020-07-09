@@ -18,10 +18,3 @@ steps:
 - task: DotNetCoreCLI@2
   inputs:
     command: 'test'
-- task: Docker@2
-  inputs:
-    containerRegistry: 'paymentstest'
-    repository: 'payments-backend-test'
-    command: 'buildAndPush'
-    Dockerfile: '**/Dockerfile'
-    tags: '$(Build.BuildNumber)'
