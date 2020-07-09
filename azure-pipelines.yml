@@ -20,7 +20,7 @@ steps:
     command: 'test'
 - task: Docker@2
   inputs:
-    containerRegistry: 'chbpayments'
+    containerRegistry: 'paymentstest'
     repository: 'payments-backend-test'
     command: 'buildAndPush'
     Dockerfile: '**/Dockerfile'
