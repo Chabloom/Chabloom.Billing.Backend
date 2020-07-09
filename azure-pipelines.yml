@@ -23,8 +23,27 @@ variables:
 
 
 stages:
+- stage: Test
+  displayName: Test stage
+
+  jobs:
+  - job: Test
+    displayName: Test
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        useGlobalJson: true
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'test'
+
 - stage: Build
   displayName: Build stage
+  dependsOn: Test
+
   jobs:
   - job: Build
     displayName: Build
@@ -43,22 +62,6 @@ stages:
 
     - upload: manifests
       artifact: manifests
-
-- stage: Test
-  displayName: Test stage
-  jobs:
-  - job: Test
-    displayName: Test
-    pool:
-      vmImage: $(vmImageName)
-    steps:
-    - task: UseDotNet@2
-      inputs:
-        packageType: 'sdk'
-        useGlobalJson: true
-    - task: DotNetCoreCLI@2
-      inputs:
-        command: 'test'
 
 - stage: Deploy
   displayName: Deploy stage
