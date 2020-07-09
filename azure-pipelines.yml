@@ -15,7 +15,7 @@ variables:
   imageRepository: 'paymentsbackend'
   containerRegistry: 'paymentstest.azurecr.io'
   dockerfilePath: '**/Dockerfile'
-  tag: '$(Build.BuildId)'
+  tag: '$(Build.BuildNumber)'
   imagePullSecret: 'paymentstest2807c1d5-auth'
 
   # Agent VM image name
@@ -60,8 +60,11 @@ stages:
         tags: |
           $(tag)
 
-    - upload: manifests
-      artifact: manifests
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Pipeline.Workspace)'
+        artifactName: 'manifests'
+        path: 'manifests'
 
 - stage: Deploy
   displayName: Deploy stage
