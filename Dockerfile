@@ -8,8 +8,6 @@ RUN dotnet restore
 
 # Copy everything else and build
 COPY Payments.Backend/* ./
-RUN dotnet clean
-RUN rm -rf out
 RUN dotnet publish -c Release -o out
 
 # Build runtime image
