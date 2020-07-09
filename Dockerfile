@@ -1,14 +1,16 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build-env
 WORKDIR /app
 
-# Copy csproj and restore as distinct layers
+RUN ls
 COPY global.json ./
-COPY Payments.Backend/*.csproj ./
-RUN dotnet restore
-
-# Copy everything else and build
 COPY Payments.Backend/* ./
+RUN ls
+RUN dotnet clean
+RUN ls
+RUN dotnet restore
+RUN ls
 RUN dotnet publish -c Release -o out
+RUN ls
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
