@@ -5,20 +5,20 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Payments.Backend.Models
 {
-    public class AccountViewModel
+    public class TransactionViewModel
     {
         public Guid Id { get; set; }
 
         [Required]
-        public string Name { get; set; }
+        public string ExternalId { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
+        public decimal Amount { get; set; }
 
         [Required]
-        public Guid PaymentSchedule { get; set; }
+        public DateTimeOffset Timestamp { get; set; }
 
         [Required]
-        public bool Enabled { get; set; } = true;
+        public Guid Bill { get; set; }
     }
 }

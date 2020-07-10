@@ -6,26 +6,24 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Payments.Backend.Models
 {
-    [Table("PaymentsAccounts")]
-    public class Account
+    [Table("PaymentsTransactions")]
+    public class Transaction
     {
         [Required]
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public string Name { get; set; }
+        public string ExternalId { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal Amount { get; set; }
 
         [Required]
-        public PaymentSchedule PaymentSchedule { get; set; }
+        public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public bool Enabled { get; set; } = true;
-
-        [Required]
-        public Partition Partition { get; set; }
+        public Bill Bill { get; set; }
     }
 }

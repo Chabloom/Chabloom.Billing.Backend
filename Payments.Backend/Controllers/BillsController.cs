@@ -14,11 +14,11 @@ namespace Payments.Backend.Controllers
     [Produces("application/json")]
     [Route("api/[controller]")]
     [ApiController]
-    public class AccountsController : ControllerBase
+    public class BillsController : ControllerBase
     {
         private readonly PaymentServiceDbContext _context;
 
-        public AccountsController(PaymentServiceDbContext context)
+        public BillsController(PaymentServiceDbContext context)
         {
             _context = context;
         }
@@ -27,17 +27,16 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
+        public async Task<ActionResult<IEnumerable<BillViewModel>>> GetBills()
         {
-            return await _context.Accounts
-                .Include(x => x.PaymentSchedule)
-                .Select(x => new AccountViewModel
+            return await _context.Bills
+                .Include(x => x.Account)
+                .Select(x => new BillViewModel
                 {
                     Id = x.Id,
-                    Name = x.Name,
-                    PrimaryAddress = x.PrimaryAddress,
-                    PaymentSchedule = x.PaymentSchedule.Id,
-                    Enabled = x.Enabled
+                    Completed = x.Completed,
+                    DueDate = x.DueDate,
+                    Account = x.Account.Id
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -47,25 +46,24 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
+        public async Task<ActionResult<BillViewModel>> GetBill(Guid id)
         {
-            var account = await _context.Accounts
-                .Include(x => x.PaymentSchedule)
+            var bill = await _context.Bills
+                .Include(x => x.Account)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
-            if (account == null)
+            if (bill == null)
             {
                 return NotFound();
             }
 
-            return new AccountViewModel
+            return new BillViewModel
             {
-                Id = account.Id,
-                Name = account.Name,
-                PrimaryAddress = account.PrimaryAddress,
-                PaymentSchedule = account.PaymentSchedule.Id,
-                Enabled = account.Enabled
+                Id = bill.Id,
+                Completed = bill.Completed,
+                DueDate = bill.DueDate,
+                Account = bill.Account.Id
             };
         }
 
@@ -75,7 +73,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutAccount(Guid id, AccountViewModel viewModel)
+        public async Task<IActionResult> PutBill(Guid id, BillViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -87,23 +85,22 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            var account = await _context
-                .Accounts
+            var bill = await _context
+                .Bills
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (account == null)
+            if (bill == null)
             {
                 return NotFound();
             }
 
-            account.Name = viewModel.Name;
-            account.PrimaryAddress = viewModel.PrimaryAddress;
-            account.PaymentSchedule = await _context.PaymentSchedules
-                .FirstOrDefaultAsync(x => x.Id == viewModel.PaymentSchedule)
+            bill.Completed = viewModel.Completed;
+            bill.DueDate = viewModel.DueDate;
+            bill.Account = await _context.Accounts
+                .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                 .ConfigureAwait(false);
-            account.Enabled = viewModel.Enabled;
 
-            _context.Update(account);
+            _context.Update(bill);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
@@ -115,7 +112,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> PostAccount(AccountViewModel viewModel)
+        public async Task<ActionResult<BillViewModel>> PostBill(BillViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -127,20 +124,19 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            await _context.Accounts.AddAsync(new Account
+            await _context.Bills.AddAsync(new Bill
                 {
-                    Name = viewModel.Name,
-                    PrimaryAddress = viewModel.PrimaryAddress,
-                    PaymentSchedule = await _context.PaymentSchedules
-                        .FirstOrDefaultAsync(x => x.Id == viewModel.PaymentSchedule)
-                        .ConfigureAwait(false),
-                    Enabled = viewModel.Enabled
+                    Completed = viewModel.Completed,
+                    DueDate = viewModel.DueDate,
+                    Account = await _context.Accounts
+                        .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                        .ConfigureAwait(false)
                 })
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            return CreatedAtAction("GetAccount", new {id = viewModel.Id}, viewModel);
+            return CreatedAtAction("GetBill", new {id = viewModel.Id}, viewModel);
         }
     }
 }

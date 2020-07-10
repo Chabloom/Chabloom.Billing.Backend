@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Payments.Backend.Models
 {
-    public class AccountViewModel
+    public class PaymentScheduleViewModel
     {
         public Guid Id { get; set; }
 
@@ -13,12 +13,12 @@ namespace Payments.Backend.Models
         public string Name { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
+        public decimal Amount { get; set; }
 
         [Required]
-        public Guid PaymentSchedule { get; set; }
+        public int DayDue { get; set; }
 
         [Required]
-        public bool Enabled { get; set; } = true;
+        public int Interval { get; set; }
     }
 }

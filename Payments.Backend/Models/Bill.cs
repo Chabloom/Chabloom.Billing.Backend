@@ -1,29 +1,29 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Payments.Backend.Models
 {
-    public class Address
+    [Table("PaymentsBills")]
+    public class Bill
     {
         [Required]
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public string Name { get; set; }
+        public bool Completed { get; set; }
+
+        [Required]
+        public DateTime DueDate { get; set; }
 
         [Required]
         public Account Account { get; set; }
 
-        public AddressViewModel ToViewModel()
-        {
-            return new AddressViewModel
-            {
-                Id = Id,
-                Name = Name
-            };
-        }
+        [Required]
+        public List<Transaction> Transactions { get; set; }
     }
 }

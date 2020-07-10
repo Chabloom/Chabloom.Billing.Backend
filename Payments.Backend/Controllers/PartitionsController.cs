@@ -14,11 +14,11 @@ namespace Payments.Backend.Controllers
     [Produces("application/json")]
     [Route("api/[controller]")]
     [ApiController]
-    public class AccountsController : ControllerBase
+    public class PartitionsController : ControllerBase
     {
         private readonly PaymentServiceDbContext _context;
 
-        public AccountsController(PaymentServiceDbContext context)
+        public PartitionsController(PaymentServiceDbContext context)
         {
             _context = context;
         }
@@ -27,16 +27,13 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
+        public async Task<ActionResult<IEnumerable<PartitionViewModel>>> GetPartitions()
         {
-            return await _context.Accounts
-                .Include(x => x.PaymentSchedule)
-                .Select(x => new AccountViewModel
+            return await _context.Partitions
+                .Select(x => new PartitionViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
-                    PrimaryAddress = x.PrimaryAddress,
-                    PaymentSchedule = x.PaymentSchedule.Id,
                     Enabled = x.Enabled
                 })
                 .ToListAsync()
@@ -47,25 +44,22 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
+        public async Task<ActionResult<PartitionViewModel>> GetPartition(Guid id)
         {
-            var account = await _context.Accounts
-                .Include(x => x.PaymentSchedule)
+            var partition = await _context.Partitions
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
-            if (account == null)
+            if (partition == null)
             {
                 return NotFound();
             }
 
-            return new AccountViewModel
+            return new PartitionViewModel
             {
-                Id = account.Id,
-                Name = account.Name,
-                PrimaryAddress = account.PrimaryAddress,
-                PaymentSchedule = account.PaymentSchedule.Id,
-                Enabled = account.Enabled
+                Id = partition.Id,
+                Name = partition.Name,
+                Enabled = partition.Enabled
             };
         }
 
@@ -75,7 +69,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutAccount(Guid id, AccountViewModel viewModel)
+        public async Task<IActionResult> PutPartition(Guid id, PartitionViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -87,23 +81,19 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            var account = await _context
-                .Accounts
+            var partition = await _context
+                .Partitions
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (account == null)
+            if (partition == null)
             {
                 return NotFound();
             }
 
-            account.Name = viewModel.Name;
-            account.PrimaryAddress = viewModel.PrimaryAddress;
-            account.PaymentSchedule = await _context.PaymentSchedules
-                .FirstOrDefaultAsync(x => x.Id == viewModel.PaymentSchedule)
-                .ConfigureAwait(false);
-            account.Enabled = viewModel.Enabled;
+            partition.Name = viewModel.Name;
+            partition.Enabled = viewModel.Enabled;
 
-            _context.Update(account);
+            _context.Update(partition);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
@@ -115,7 +105,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> PostAccount(AccountViewModel viewModel)
+        public async Task<ActionResult<PartitionViewModel>> PostPartition(PartitionViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -127,20 +117,16 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            await _context.Accounts.AddAsync(new Account
+            await _context.Partitions.AddAsync(new Partition
                 {
                     Name = viewModel.Name,
-                    PrimaryAddress = viewModel.PrimaryAddress,
-                    PaymentSchedule = await _context.PaymentSchedules
-                        .FirstOrDefaultAsync(x => x.Id == viewModel.PaymentSchedule)
-                        .ConfigureAwait(false),
                     Enabled = viewModel.Enabled
                 })
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            return CreatedAtAction("GetAccount", new {id = viewModel.Id}, viewModel);
+            return CreatedAtAction("GetPartition", new {id = viewModel.Id}, viewModel);
         }
     }
 }

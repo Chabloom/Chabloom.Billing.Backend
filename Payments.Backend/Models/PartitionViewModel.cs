@@ -5,20 +5,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Payments.Backend.Models
 {
-    public class AddressViewModel
+    public class PartitionViewModel
     {
         public Guid Id { get; set; }
 
         [Required]
         public string Name { get; set; }
 
-        public Address ToModel()
-        {
-            return new Address
-            {
-                Id = Id,
-                Name = Name
-            };
-        }
+        [Required]
+        public bool Enabled { get; set; } = true;
     }
 }

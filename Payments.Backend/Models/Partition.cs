@@ -1,13 +1,14 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Payments.Backend.Models
 {
-    [Table("PaymentsAccounts")]
-    public class Account
+    [Table("PaymentsPartitions")]
+    public class Partition
     {
         [Required]
         [Key]
@@ -17,15 +18,8 @@ namespace Payments.Backend.Models
         public string Name { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
-
-        [Required]
-        public PaymentSchedule PaymentSchedule { get; set; }
-
-        [Required]
         public bool Enabled { get; set; } = true;
 
-        [Required]
-        public Partition Partition { get; set; }
+        public List<Account> Accounts { get; set; }
     }
 }
