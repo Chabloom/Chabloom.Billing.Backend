@@ -15,11 +15,11 @@ stages:
     displayName: Build
     steps:
     - task: UseDotNet@2
-    inputs:
+      inputs:
         packageType: 'sdk'
         useGlobalJson: true
     - task: DotNetCoreCLI@2
-    inputs:
+      inputs:
         command: 'build'
 - stage: Test
   displayName: Test stage
@@ -29,9 +29,9 @@ stages:
     displayName: Test
     steps:
     - task: UseDotNet@2
-    inputs:
+      inputs:
         packageType: 'sdk'
         useGlobalJson: true
     - task: DotNetCoreCLI@2
-    inputs:
+      inputs:
         command: 'test'
