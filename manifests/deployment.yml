@@ -1,0 +1,16 @@
+apiVersion : apps/v1beta1
+kind: Deployment
+metadata:
+  name: paymentsbackend 
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: paymentsbackend 
+    spec:
+      containers:
+        - name: paymentsbackend 
+          image: paymentstest.azurecr.io/paymentsbackend
+          ports:
+          - containerPort: 80
