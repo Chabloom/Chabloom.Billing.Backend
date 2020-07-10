@@ -11,12 +11,12 @@ resources:
 variables:
 
   # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: 'a4b40aba-74b4-4851-aaae-6e3595c56b99'
+  dockerRegistryServiceConnection: 'c738c890-b086-413e-bee3-6d9324e10a89'
   imageRepository: 'paymentsbackend'
   containerRegistry: 'paymentstest.azurecr.io'
   dockerfilePath: '**/Dockerfile'
   tag: '$(Build.BuildNumber)'
-  imagePullSecret: 'paymentstest2807c1d5-auth'
+  imagePullSecret: 'paymentstest1596702a-auth'
 
   # Agent VM image name
   vmImageName: 'ubuntu-latest'
@@ -60,11 +60,8 @@ stages:
         tags: |
           $(tag)
 
-    - task: PublishPipelineArtifact@1
-      inputs:
-        targetPath: '$(Pipeline.Workspace)'
-        artifactName: 'manifests'
-        path: 'manifests'
+    - upload: manifests
+      artifact: manifests
 
 - stage: Deploy
   displayName: Deploy stage
