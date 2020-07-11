@@ -129,18 +129,22 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            await _context.Accounts.AddAsync(new Account
-                {
-                    Name = viewModel.Name,
-                    PrimaryAddress = viewModel.PrimaryAddress,
-                    Amount = viewModel.Amount,
-                    DayDue = viewModel.DayDue,
-                    Interval = viewModel.Interval,
-                    Enabled = viewModel.Enabled
-                })
+            var account = new Account
+            {
+                Name = viewModel.Name,
+                PrimaryAddress = viewModel.PrimaryAddress,
+                Amount = viewModel.Amount,
+                DayDue = viewModel.DayDue,
+                Interval = viewModel.Interval,
+                Enabled = viewModel.Enabled
+            };
+
+            await _context.Accounts.AddAsync(account)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
+
+            viewModel.Id = account.Id;
 
             return CreatedAtAction("GetAccount", new {id = viewModel.Id}, viewModel);
         }

@@ -117,14 +117,18 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            await _context.Partitions.AddAsync(new Partition
-                {
-                    Name = viewModel.Name,
-                    Enabled = viewModel.Enabled
-                })
+            var partition = new Partition
+            {
+                Name = viewModel.Name,
+                Enabled = viewModel.Enabled
+            };
+
+            await _context.Partitions.AddAsync(partition)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
+
+            viewModel.Id = partition.Id;
 
             return CreatedAtAction("GetPartition", new {id = viewModel.Id}, viewModel);
         }

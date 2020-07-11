@@ -86,18 +86,22 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            await _context.Transactions.AddAsync(new Transaction
-                {
-                    ExternalId = viewModel.ExternalId,
-                    Amount = viewModel.Amount,
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Bill = await _context.Bills
-                        .FirstOrDefaultAsync(x => x.Id == viewModel.Bill)
-                        .ConfigureAwait(false)
-                })
+            var transaction = new Transaction
+            {
+                ExternalId = viewModel.ExternalId,
+                Amount = viewModel.Amount,
+                Timestamp = DateTimeOffset.UtcNow,
+                Bill = await _context.Bills
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.Bill)
+                    .ConfigureAwait(false)
+            };
+
+            await _context.Transactions.AddAsync(transaction)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
+
+            viewModel.Id = transaction.Id;
 
             return CreatedAtAction("GetTransaction", new {id = viewModel.Id}, viewModel);
         }

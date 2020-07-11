@@ -124,17 +124,21 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            await _context.Bills.AddAsync(new Bill
-                {
-                    Completed = viewModel.Completed,
-                    DueDate = viewModel.DueDate,
-                    Account = await _context.Accounts
-                        .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
-                        .ConfigureAwait(false)
-                })
+            var bill = new Bill
+            {
+                Completed = viewModel.Completed,
+                DueDate = viewModel.DueDate,
+                Account = await _context.Accounts
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                    .ConfigureAwait(false)
+            };
+
+            await _context.Bills.AddAsync(bill)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
+
+            viewModel.Id = bill.Id;
 
             return CreatedAtAction("GetBill", new {id = viewModel.Id}, viewModel);
         }
