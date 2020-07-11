@@ -16,7 +16,13 @@ namespace Payments.Backend.Models
         public string PrimaryAddress { get; set; }
 
         [Required]
-        public Guid PaymentSchedule { get; set; }
+        public decimal Amount { get; set; }
+
+        [Required]
+        public int DayDue { get; set; }
+
+        [Required]
+        public int Interval { get; set; }
 
         [Required]
         public bool Enabled { get; set; } = true;

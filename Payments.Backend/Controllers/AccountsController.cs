@@ -30,13 +30,14 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
             return await _context.Accounts
-                .Include(x => x.PaymentSchedule)
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     PrimaryAddress = x.PrimaryAddress,
-                    PaymentSchedule = x.PaymentSchedule.Id,
+                    Amount = x.Amount,
+                    DayDue = x.DayDue,
+                    Interval = x.Interval,
                     Enabled = x.Enabled
                 })
                 .ToListAsync()
@@ -50,7 +51,6 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
             var account = await _context.Accounts
-                .Include(x => x.PaymentSchedule)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
@@ -64,7 +64,9 @@ namespace Payments.Backend.Controllers
                 Id = account.Id,
                 Name = account.Name,
                 PrimaryAddress = account.PrimaryAddress,
-                PaymentSchedule = account.PaymentSchedule.Id,
+                Amount = account.Amount,
+                DayDue = account.DayDue,
+                Interval = account.Interval,
                 Enabled = account.Enabled
             };
         }
@@ -98,9 +100,9 @@ namespace Payments.Backend.Controllers
 
             account.Name = viewModel.Name;
             account.PrimaryAddress = viewModel.PrimaryAddress;
-            account.PaymentSchedule = await _context.PaymentSchedules
-                .FirstOrDefaultAsync(x => x.Id == viewModel.PaymentSchedule)
-                .ConfigureAwait(false);
+            account.Amount = viewModel.Amount;
+            account.DayDue = viewModel.DayDue;
+            account.Interval = viewModel.Interval;
             account.Enabled = viewModel.Enabled;
 
             _context.Update(account);
@@ -131,9 +133,9 @@ namespace Payments.Backend.Controllers
                 {
                     Name = viewModel.Name,
                     PrimaryAddress = viewModel.PrimaryAddress,
-                    PaymentSchedule = await _context.PaymentSchedules
-                        .FirstOrDefaultAsync(x => x.Id == viewModel.PaymentSchedule)
-                        .ConfigureAwait(false),
+                    Amount = viewModel.Amount,
+                    DayDue = viewModel.DayDue,
+                    Interval = viewModel.Interval,
                     Enabled = viewModel.Enabled
                 })
                 .ConfigureAwait(false);

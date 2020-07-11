@@ -20,7 +20,14 @@ namespace Payments.Backend.Models
         public string PrimaryAddress { get; set; }
 
         [Required]
-        public PaymentSchedule PaymentSchedule { get; set; }
+        [Column(TypeName = "decimal(18,4)")]
+        public decimal Amount { get; set; }
+
+        [Required]
+        public int DayDue { get; set; }
+
+        [Required]
+        public int Interval { get; set; }
 
         [Required]
         public bool Enabled { get; set; } = true;
