@@ -7,44 +7,21 @@ pool:
 variables:
   buildConfiguration: 'Release'
 
-stages:
-- stage: Build
-  displayName: Build stage
-  jobs:
-  - job: Build
-    displayName: Build
-    steps:
-    - task: UseDotNet@2
-      inputs:
-        packageType: 'sdk'
-        useGlobalJson: true
-    - task: DotNetCoreCLI@2
-      inputs:
-        command: 'build'
-- stage: Test
-  displayName: Test stage
-  dependsOn: Build
-  jobs:
-  - job: Test
-    displayName: Test
-    steps:
-    - task: DotNetCoreCLI@2
-      inputs:
-        command: 'test'
-- stage: Publish
-  displayName: Publish stage
-  dependsOn: Test
-  jobs:
-  - job: Publish
-    displayName: Publish
-    steps:
-    - task: DotNetCoreCLI@2
-      inputs:
-        command: 'publish'
-        publishWebProjects: true
-        arguments: '-o $(Build.ArtifactStagingDirectory) -r linux-x64'
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'drop'
-        publishLocation: 'Container'
+steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    useGlobalJson: true
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '-o $(Build.ArtifactStagingDirectory) -r linux-x64'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
