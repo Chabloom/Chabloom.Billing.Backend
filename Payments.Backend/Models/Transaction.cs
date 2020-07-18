@@ -14,11 +14,10 @@ namespace Payments.Backend.Models
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public string ExternalId { get; set; }
+        public int Amount { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(18,4)")]
-        public decimal Amount { get; set; }
+        public string ReferenceId { get; set; }
 
         [Required]
         public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;

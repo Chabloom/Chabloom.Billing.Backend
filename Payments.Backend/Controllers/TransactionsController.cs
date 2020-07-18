@@ -34,8 +34,8 @@ namespace Payments.Backend.Controllers
                 .Select(x => new TransactionViewModel
                 {
                     Id = x.Id,
-                    ExternalId = x.ExternalId,
                     Amount = x.Amount,
+                    ReferenceId = x.ReferenceId,
                     Timestamp = x.Timestamp,
                     Bill = x.Bill.Id
                 })
@@ -62,8 +62,8 @@ namespace Payments.Backend.Controllers
             return new TransactionViewModel
             {
                 Id = transaction.Id,
-                ExternalId = transaction.ExternalId,
                 Amount = transaction.Amount,
+                ReferenceId = transaction.ReferenceId,
                 Timestamp = transaction.Timestamp,
                 Bill = transaction.Bill.Id
             };
@@ -88,8 +88,8 @@ namespace Payments.Backend.Controllers
 
             var transaction = new Transaction
             {
-                ExternalId = viewModel.ExternalId,
                 Amount = viewModel.Amount,
+                ReferenceId = viewModel.ReferenceId,
                 Timestamp = DateTimeOffset.UtcNow,
                 Bill = await _context.Bills
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Bill)

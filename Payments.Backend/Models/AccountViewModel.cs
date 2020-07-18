@@ -1,6 +1,7 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Payments.Backend.Models
@@ -16,15 +17,10 @@ namespace Payments.Backend.Models
         public string PrimaryAddress { get; set; }
 
         [Required]
-        public decimal Amount { get; set; }
-
-        [Required]
-        public int DayDue { get; set; }
-
-        [Required]
-        public int Interval { get; set; }
-
-        [Required]
         public bool Enabled { get; set; } = true;
+
+        public List<Guid> PaymentSchedules { get; set; }
+
+        public Guid Partition { get; set; }
     }
 }

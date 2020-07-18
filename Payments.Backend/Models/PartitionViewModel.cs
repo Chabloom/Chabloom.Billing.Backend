@@ -1,6 +1,7 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Payments.Backend.Models
@@ -13,6 +14,8 @@ namespace Payments.Backend.Models
         public string Name { get; set; }
 
         [Required]
-        public bool Enabled { get; set; } = true;
+        public bool Enabled { get; set; }
+
+        public List<Guid> Accounts { get; set; }
     }
 }

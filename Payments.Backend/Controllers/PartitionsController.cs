@@ -30,11 +30,15 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<IEnumerable<PartitionViewModel>>> GetPartitions()
         {
             return await _context.Partitions
+                .Include(x => x.Accounts)
                 .Select(x => new PartitionViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
-                    Enabled = x.Enabled
+                    Enabled = x.Enabled,
+                    Accounts = x.Accounts
+                        .Select(y => y.Id)
+                        .ToList()
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -47,6 +51,7 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<PartitionViewModel>> GetPartition(Guid id)
         {
             var partition = await _context.Partitions
+                .Include(x => x.Accounts)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
@@ -59,7 +64,10 @@ namespace Payments.Backend.Controllers
             {
                 Id = partition.Id,
                 Name = partition.Name,
-                Enabled = partition.Enabled
+                Enabled = partition.Enabled,
+                Accounts = partition.Accounts
+                    .Select(x => x.Id)
+                    .ToList()
             };
         }
 

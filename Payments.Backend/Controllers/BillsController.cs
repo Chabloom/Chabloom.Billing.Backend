@@ -31,12 +31,16 @@ namespace Payments.Backend.Controllers
         {
             return await _context.Bills
                 .Include(x => x.Account)
+                .Include(x => x.Transactions)
                 .Select(x => new BillViewModel
                 {
                     Id = x.Id,
-                    Completed = x.Completed,
+                    Amount = x.Amount,
                     DueDate = x.DueDate,
-                    Account = x.Account.Id
+                    Account = x.Account.Id,
+                    Transactions = x.Transactions
+                        .Select(y => y.Id)
+                        .ToList()
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -61,9 +65,12 @@ namespace Payments.Backend.Controllers
             return new BillViewModel
             {
                 Id = bill.Id,
-                Completed = bill.Completed,
+                Amount = bill.Amount,
                 DueDate = bill.DueDate,
-                Account = bill.Account.Id
+                Account = bill.Account.Id,
+                Transactions = bill.Transactions
+                    .Select(x => x.Id)
+                    .ToList()
             };
         }
 
@@ -94,7 +101,7 @@ namespace Payments.Backend.Controllers
                 return NotFound();
             }
 
-            bill.Completed = viewModel.Completed;
+            bill.Amount = viewModel.Amount;
             bill.DueDate = viewModel.DueDate;
             bill.Account = await _context.Accounts
                 .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
@@ -126,7 +133,7 @@ namespace Payments.Backend.Controllers
 
             var bill = new Bill
             {
-                Completed = viewModel.Completed,
+                Amount = viewModel.Amount,
                 DueDate = viewModel.DueDate,
                 Account = await _context.Accounts
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)

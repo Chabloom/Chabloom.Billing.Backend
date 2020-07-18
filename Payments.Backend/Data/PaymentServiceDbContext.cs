@@ -19,6 +19,8 @@ namespace Payments.Backend.Data
 
         public DbSet<Partition> Partitions { get; set; }
 
+        public DbSet<PaymentSchedule> PaymentSchedules { get; set; }
+
         public DbSet<Transaction> Transactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

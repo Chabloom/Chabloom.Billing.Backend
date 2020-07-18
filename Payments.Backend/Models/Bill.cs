@@ -15,7 +15,7 @@ namespace Payments.Backend.Models
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
-        public bool Completed { get; set; }
+        public int Amount { get; set; }
 
         [Required]
         public DateTime DueDate { get; set; }
@@ -23,7 +23,6 @@ namespace Payments.Backend.Models
         [Required]
         public Account Account { get; set; }
 
-        [Required]
         public List<Transaction> Transactions { get; set; }
     }
 }

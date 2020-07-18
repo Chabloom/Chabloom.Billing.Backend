@@ -14,11 +14,11 @@ namespace Payments.Backend.Controllers
     [Produces("application/json")]
     [Route("api/[controller]")]
     [ApiController]
-    public class AccountsController : ControllerBase
+    public class PaymentSchedulesController : ControllerBase
     {
         private readonly PaymentServiceDbContext _context;
 
-        public AccountsController(PaymentServiceDbContext context)
+        public PaymentSchedulesController(PaymentServiceDbContext context)
         {
             _context = context;
         }
@@ -27,21 +27,19 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
+        public async Task<ActionResult<IEnumerable<PaymentScheduleViewModel>>> GetPaymentSchedules()
         {
-            return await _context.Accounts
-                .Include(x => x.PaymentSchedules)
-                .Include(x => x.Partition)
-                .Select(x => new AccountViewModel
+            return await _context.PaymentSchedules
+                .Include(x => x.Account)
+                .Select(x => new PaymentScheduleViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
-                    PrimaryAddress = x.PrimaryAddress,
+                    Amount = x.Amount,
+                    DayDue = x.DayDue,
+                    MonthInterval = x.MonthInterval,
                     Enabled = x.Enabled,
-                    PaymentSchedules = x.PaymentSchedules
-                        .Select(y => y.Id)
-                        .ToList(),
-                    Partition = x.Partition.Id
+                    Account = x.Account.Id
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -51,29 +49,27 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
+        public async Task<ActionResult<PaymentScheduleViewModel>> GetPaymentSchedule(Guid id)
         {
-            var account = await _context.Accounts
-                .Include(x => x.PaymentSchedules)
-                .Include(x => x.Partition)
+            var paymentSchedule = await _context.PaymentSchedules
+                .Include(x => x.Account)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
-            if (account == null)
+            if (paymentSchedule == null)
             {
                 return NotFound();
             }
 
-            return new AccountViewModel
+            return new PaymentScheduleViewModel
             {
-                Id = account.Id,
-                Name = account.Name,
-                PrimaryAddress = account.PrimaryAddress,
-                Enabled = account.Enabled,
-                PaymentSchedules = account.PaymentSchedules
-                    .Select(x => x.Id)
-                    .ToList(),
-                Partition = account.Partition.Id
+                Id = paymentSchedule.Id,
+                Name = paymentSchedule.Name,
+                Amount = paymentSchedule.Amount,
+                DayDue = paymentSchedule.DayDue,
+                MonthInterval = paymentSchedule.MonthInterval,
+                Enabled = paymentSchedule.Enabled,
+                Account = paymentSchedule.Account.Id
             };
         }
 
@@ -83,7 +79,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutAccount(Guid id, AccountViewModel viewModel)
+        public async Task<IActionResult> PutPaymentSchedule(Guid id, PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -95,23 +91,25 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            var account = await _context
-                .Accounts
+            var paymentSchedule = await _context
+                .PaymentSchedules
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (account == null)
+            if (paymentSchedule == null)
             {
                 return NotFound();
             }
 
-            account.Name = viewModel.Name;
-            account.PrimaryAddress = viewModel.PrimaryAddress;
-            account.Enabled = viewModel.Enabled;
-            account.Partition = await _context.Partitions
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Partition)
+            paymentSchedule.Name = viewModel.Name;
+            paymentSchedule.Amount = viewModel.Amount;
+            paymentSchedule.DayDue = viewModel.DayDue;
+            paymentSchedule.MonthInterval = viewModel.MonthInterval;
+            paymentSchedule.Enabled = viewModel.Enabled;
+            paymentSchedule.Account = await _context.Accounts
+                .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                 .ConfigureAwait(false);
 
-            _context.Update(account);
+            _context.Update(paymentSchedule);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
@@ -123,7 +121,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> PostAccount(AccountViewModel viewModel)
+        public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -135,30 +133,26 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            // Assign to default partition if the partition was not specified
-            if (viewModel.Partition == Guid.Empty)
-            {
-                viewModel.Partition = Guid.Parse("040B9DA1-352D-4B81-8E6A-78ECD2FF14D1");
-            }
-
-            var account = new Account
+            var paymentSchedule = new PaymentSchedule
             {
                 Name = viewModel.Name,
-                PrimaryAddress = viewModel.PrimaryAddress,
+                Amount = viewModel.Amount,
+                DayDue = viewModel.DayDue,
+                MonthInterval = viewModel.MonthInterval,
                 Enabled = viewModel.Enabled,
-                Partition = await _context.Partitions
-                    .FirstOrDefaultAsync(x => x.Id == viewModel.Partition)
+                Account = await _context.Accounts
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                     .ConfigureAwait(false)
             };
 
-            await _context.Accounts.AddAsync(account)
+            await _context.PaymentSchedules.AddAsync(paymentSchedule)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            viewModel.Id = account.Id;
+            viewModel.Id = paymentSchedule.Id;
 
-            return CreatedAtAction("GetAccount", new {id = viewModel.Id}, viewModel);
+            return CreatedAtAction("GetPaymentSchedule", new { id = viewModel.Id }, viewModel);
         }
     }
 }
