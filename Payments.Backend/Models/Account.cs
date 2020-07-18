@@ -25,6 +25,8 @@ namespace Payments.Backend.Models
 
         public List<PaymentSchedule> PaymentSchedules { get; set; }
 
+        public List<Bill> Bills { get; set; }
+
         [Required]
         public Partition Partition { get; set; }
     }

@@ -21,6 +21,8 @@ namespace Payments.Backend.Models
 
         public List<Guid> PaymentSchedules { get; set; }
 
+        public List<Guid> Bills { get; set; }
+
         public Guid Partition { get; set; }
     }
 }

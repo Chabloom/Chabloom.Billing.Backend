@@ -31,6 +31,7 @@ namespace Payments.Backend.Controllers
         {
             return await _context.Accounts
                 .Include(x => x.PaymentSchedules)
+                .Include(x => x.Bills)
                 .Include(x => x.Partition)
                 .Select(x => new AccountViewModel
                 {
@@ -39,6 +40,9 @@ namespace Payments.Backend.Controllers
                     PrimaryAddress = x.PrimaryAddress,
                     Enabled = x.Enabled,
                     PaymentSchedules = x.PaymentSchedules
+                        .Select(y => y.Id)
+                        .ToList(),
+                    Bills = x.Bills
                         .Select(y => y.Id)
                         .ToList(),
                     Partition = x.Partition.Id
@@ -55,6 +59,7 @@ namespace Payments.Backend.Controllers
         {
             var account = await _context.Accounts
                 .Include(x => x.PaymentSchedules)
+                .Include(x => x.Bills)
                 .Include(x => x.Partition)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -71,6 +76,9 @@ namespace Payments.Backend.Controllers
                 PrimaryAddress = account.PrimaryAddress,
                 Enabled = account.Enabled,
                 PaymentSchedules = account.PaymentSchedules
+                    .Select(x => x.Id)
+                    .ToList(),
+                Bills = account.Bills
                     .Select(x => x.Id)
                     .ToList(),
                 Partition = account.Partition.Id
