@@ -54,6 +54,7 @@ namespace Payments.Backend.Controllers
         {
             var bill = await _context.Bills
                 .Include(x => x.Account)
+                .Include(x => x.Transactions)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
