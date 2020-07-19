@@ -124,7 +124,7 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            StripeConfiguration.ApiKey = "sk_test_4eC39HqLyjWDarjtT1zdp7dc";
+            StripeConfiguration.ApiKey = "pk_test_51H6f58B2z6MUftpd5NPoGSdPK1iVHyj7KzfgqaOc9OhlAri4NWiqQUxHOovXyAOqISOLiQgHMHRDhJbQEPOvwbwm00TIVJPFCn";
 
             var options = new PaymentIntentCreateOptions
             {
