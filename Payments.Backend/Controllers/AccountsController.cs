@@ -18,9 +18,9 @@ namespace Payments.Backend.Controllers
     [ApiController]
     public class AccountsController : ControllerBase
     {
-        private readonly PaymentServiceDbContext _context;
+        private readonly ApplicationDbContext _context;
 
-        public AccountsController(PaymentServiceDbContext context)
+        public AccountsController(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -33,22 +33,12 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
             return await _context.Accounts
-                .Include(x => x.PaymentSchedules)
-                .Include(x => x.Bills)
-                .Include(x => x.Partition)
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
-                    PrimaryAddress = x.PrimaryAddress,
-                    Enabled = x.Enabled,
-                    PaymentSchedules = x.PaymentSchedules
-                        .Select(y => y.Id)
-                        .ToList(),
-                    Bills = x.Bills
-                        .Select(y => y.Id)
-                        .ToList(),
-                    Partition = x.Partition.Id
+                    ExternalId = x.ExternalId,
+                    OwnerId = x.OwnerId
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -62,9 +52,6 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
             var account = await _context.Accounts
-                .Include(x => x.PaymentSchedules)
-                .Include(x => x.Bills)
-                .Include(x => x.Partition)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
@@ -77,15 +64,8 @@ namespace Payments.Backend.Controllers
             {
                 Id = account.Id,
                 Name = account.Name,
-                PrimaryAddress = account.PrimaryAddress,
-                Enabled = account.Enabled,
-                PaymentSchedules = account.PaymentSchedules
-                    .Select(x => x.Id)
-                    .ToList(),
-                Bills = account.Bills
-                    .Select(x => x.Id)
-                    .ToList(),
-                Partition = account.Partition.Id
+                ExternalId = account.ExternalId,
+                OwnerId = account.OwnerId
             };
         }
 
@@ -118,11 +98,8 @@ namespace Payments.Backend.Controllers
             }
 
             account.Name = viewModel.Name;
-            account.PrimaryAddress = viewModel.PrimaryAddress;
-            account.Enabled = viewModel.Enabled;
-            account.Partition = await _context.Partitions
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Partition)
-                .ConfigureAwait(false);
+            account.ExternalId = viewModel.ExternalId;
+            account.OwnerId = viewModel.OwnerId;
 
             _context.Update(account);
             await _context.SaveChangesAsync()
@@ -149,20 +126,11 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            // Assign to default partition if the partition was not specified
-            if (viewModel.Partition == Guid.Empty)
-            {
-                viewModel.Partition = Guid.Parse("040B9DA1-352D-4B81-8E6A-78ECD2FF14D1");
-            }
-
             var account = new Account
             {
                 Name = viewModel.Name,
-                PrimaryAddress = viewModel.PrimaryAddress,
-                Enabled = viewModel.Enabled,
-                Partition = await _context.Partitions
-                    .FirstOrDefaultAsync(x => x.Id == viewModel.Partition)
-                    .ConfigureAwait(false)
+                ExternalId = viewModel.ExternalId,
+                OwnerId = viewModel.OwnerId
             };
 
             await _context.Accounts.AddAsync(account)

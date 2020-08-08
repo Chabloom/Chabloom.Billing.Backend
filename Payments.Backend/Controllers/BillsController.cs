@@ -18,9 +18,9 @@ namespace Payments.Backend.Controllers
     [ApiController]
     public class BillsController : ControllerBase
     {
-        private readonly PaymentServiceDbContext _context;
+        private readonly ApplicationDbContext _context;
 
-        public BillsController(PaymentServiceDbContext context)
+        public BillsController(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -34,16 +34,15 @@ namespace Payments.Backend.Controllers
         {
             return await _context.Bills
                 .Include(x => x.Account)
-                .Include(x => x.Transactions)
+                .Include(x => x.BillSchedule)
                 .Select(x => new BillViewModel
                 {
                     Id = x.Id,
+                    Name = x.Name,
                     Amount = x.Amount,
                     DueDate = x.DueDate,
                     Account = x.Account.Id,
-                    Transactions = x.Transactions
-                        .Select(y => y.Id)
-                        .ToList()
+                    BillSchedule = x.BillSchedule.Id
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -58,7 +57,7 @@ namespace Payments.Backend.Controllers
         {
             var bill = await _context.Bills
                 .Include(x => x.Account)
-                .Include(x => x.Transactions)
+                .Include(x => x.BillSchedule)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
@@ -70,12 +69,11 @@ namespace Payments.Backend.Controllers
             return new BillViewModel
             {
                 Id = bill.Id,
+                Name = bill.Name,
                 Amount = bill.Amount,
                 DueDate = bill.DueDate,
                 Account = bill.Account.Id,
-                Transactions = bill.Transactions
-                    .Select(x => x.Id)
-                    .ToList()
+                BillSchedule = bill.BillSchedule.Id
             };
         }
 
@@ -107,10 +105,14 @@ namespace Payments.Backend.Controllers
                 return NotFound();
             }
 
+            bill.Name = viewModel.Name;
             bill.Amount = viewModel.Amount;
             bill.DueDate = viewModel.DueDate;
             bill.Account = await _context.Accounts
                 .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                .ConfigureAwait(false);
+            bill.BillSchedule = await _context.BillSchedules
+                .FirstOrDefaultAsync(x => x.Id == viewModel.BillSchedule)
                 .ConfigureAwait(false);
 
             _context.Update(bill);
@@ -140,10 +142,14 @@ namespace Payments.Backend.Controllers
 
             var bill = new Bill
             {
+                Name = viewModel.Name,
                 Amount = viewModel.Amount,
                 DueDate = viewModel.DueDate,
                 Account = await _context.Accounts
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                    .ConfigureAwait(false),
+                BillSchedule = await _context.BillSchedules
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.BillSchedule)
                     .ConfigureAwait(false)
             };
 

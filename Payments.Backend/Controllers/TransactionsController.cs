@@ -18,9 +18,9 @@ namespace Payments.Backend.Controllers
     [ApiController]
     public class TransactionsController : ControllerBase
     {
-        private readonly PaymentServiceDbContext _context;
+        private readonly ApplicationDbContext _context;
 
-        public TransactionsController(PaymentServiceDbContext context)
+        public TransactionsController(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -33,13 +33,15 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<IEnumerable<TransactionViewModel>>> GetTransactions()
         {
             return await _context.Transactions
+                .Include(x => x.Account)
                 .Include(x => x.Bill)
                 .Select(x => new TransactionViewModel
                 {
                     Id = x.Id,
+                    Name = x.Name,
+                    ExternalId = x.ExternalId,
                     Amount = x.Amount,
-                    ReferenceId = x.ReferenceId,
-                    Timestamp = x.Timestamp,
+                    Account = x.Account.Id,
                     Bill = x.Bill.Id
                 })
                 .ToListAsync()
@@ -54,6 +56,7 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<TransactionViewModel>> GetTransaction(Guid id)
         {
             var transaction = await _context.Transactions
+                .Include(x => x.Account)
                 .Include(x => x.Bill)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -66,9 +69,10 @@ namespace Payments.Backend.Controllers
             return new TransactionViewModel
             {
                 Id = transaction.Id,
+                Name = transaction.Name,
+                ExternalId = transaction.ExternalId,
                 Amount = transaction.Amount,
-                ReferenceId = transaction.ReferenceId,
-                Timestamp = transaction.Timestamp,
+                Account = transaction.Account.Id,
                 Bill = transaction.Bill.Id
             };
         }
@@ -93,9 +97,12 @@ namespace Payments.Backend.Controllers
 
             var transaction = new Transaction
             {
+                Name = viewModel.Name,
+                ExternalId = viewModel.ExternalId,
                 Amount = viewModel.Amount,
-                ReferenceId = viewModel.ReferenceId,
-                Timestamp = DateTimeOffset.UtcNow,
+                Account = await _context.Accounts
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                    .ConfigureAwait(false),
                 Bill = await _context.Bills
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Bill)
                     .ConfigureAwait(false)

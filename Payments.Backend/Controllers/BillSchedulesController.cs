@@ -16,11 +16,11 @@ namespace Payments.Backend.Controllers
     [Produces("application/json")]
     [Route("api/[controller]")]
     [ApiController]
-    public class PaymentSchedulesController : ControllerBase
+    public class BillSchedulesController : ControllerBase
     {
-        private readonly PaymentServiceDbContext _context;
+        private readonly ApplicationDbContext _context;
 
-        public PaymentSchedulesController(PaymentServiceDbContext context)
+        public BillSchedulesController(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -29,12 +29,12 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "PaymentSchedule.Read")]
-        public async Task<ActionResult<IEnumerable<PaymentScheduleViewModel>>> GetPaymentSchedules()
+        [Authorize(Policy = "BillSchedule.Read")]
+        public async Task<ActionResult<IEnumerable<BillScheduleViewModel>>> GetBillSchedules()
         {
-            return await _context.PaymentSchedules
+            return await _context.BillSchedules
                 .Include(x => x.Account)
-                .Select(x => new PaymentScheduleViewModel
+                .Select(x => new BillScheduleViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
@@ -52,10 +52,10 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "PaymentSchedule.Read")]
-        public async Task<ActionResult<PaymentScheduleViewModel>> GetPaymentSchedule(Guid id)
+        [Authorize(Policy = "BillSchedule.Read")]
+        public async Task<ActionResult<BillScheduleViewModel>> GetBillSchedule(Guid id)
         {
-            var paymentSchedule = await _context.PaymentSchedules
+            var paymentSchedule = await _context.BillSchedules
                 .Include(x => x.Account)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -65,7 +65,7 @@ namespace Payments.Backend.Controllers
                 return NotFound();
             }
 
-            return new PaymentScheduleViewModel
+            return new BillScheduleViewModel
             {
                 Id = paymentSchedule.Id,
                 Name = paymentSchedule.Name,
@@ -83,8 +83,8 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        [Authorize(Policy = "PaymentSchedule.Write")]
-        public async Task<IActionResult> PutPaymentSchedule(Guid id, PaymentScheduleViewModel viewModel)
+        [Authorize(Policy = "BillSchedule.Write")]
+        public async Task<IActionResult> PutBillSchedule(Guid id, BillScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -97,7 +97,7 @@ namespace Payments.Backend.Controllers
             }
 
             var paymentSchedule = await _context
-                .PaymentSchedules
+                .BillSchedules
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (paymentSchedule == null)
@@ -126,8 +126,8 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "PaymentSchedule.Write")]
-        public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(PaymentScheduleViewModel viewModel)
+        [Authorize(Policy = "BillSchedule.Write")]
+        public async Task<ActionResult<BillScheduleViewModel>> PostBillSchedule(BillScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -139,7 +139,7 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            var paymentSchedule = new PaymentSchedule
+            var paymentSchedule = new BillSchedule
             {
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
@@ -151,14 +151,14 @@ namespace Payments.Backend.Controllers
                     .ConfigureAwait(false)
             };
 
-            await _context.PaymentSchedules.AddAsync(paymentSchedule)
+            await _context.BillSchedules.AddAsync(paymentSchedule)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
             viewModel.Id = paymentSchedule.Id;
 
-            return CreatedAtAction("GetPaymentSchedule", new { id = viewModel.Id }, viewModel);
+            return CreatedAtAction("GetBillSchedule", new { id = viewModel.Id }, viewModel);
         }
     }
 }
