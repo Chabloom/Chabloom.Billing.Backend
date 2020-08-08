@@ -14,9 +14,9 @@ using Payments.Backend.Models;
 namespace Payments.Backend.Controllers
 {
     [Authorize]
-    [Produces("application/json")]
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
     public class BillSchedulesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -30,7 +30,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "BillSchedule.Read")]
         public async Task<ActionResult<IEnumerable<BillScheduleViewModel>>> GetBillSchedules()
         {
             return await _context.BillSchedules
@@ -53,7 +52,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "BillSchedule.Read")]
         public async Task<ActionResult<BillScheduleViewModel>> GetBillSchedule(Guid id)
         {
             var billSchedule = await _context.BillSchedules
@@ -84,7 +82,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        [Authorize(Policy = "BillSchedule.Write")]
         public async Task<IActionResult> PutBillSchedule(Guid id, BillScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
@@ -129,7 +126,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "BillSchedule.Write")]
         public async Task<ActionResult<BillScheduleViewModel>> PostBillSchedule(BillScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
@@ -163,7 +159,7 @@ namespace Payments.Backend.Controllers
 
             viewModel.Id = billSchedule.Id;
 
-            return CreatedAtAction("GetBillSchedule", new { id = viewModel.Id }, viewModel);
+            return CreatedAtAction("GetBillSchedule", new {id = viewModel.Id}, viewModel);
         }
     }
 }

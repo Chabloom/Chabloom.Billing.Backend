@@ -14,9 +14,9 @@ using Payments.Backend.Models;
 namespace Payments.Backend.Controllers
 {
     [Authorize]
-    [Produces("application/json")]
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
     public class TransactionsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -30,7 +30,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "Transaction.Read")]
         public async Task<ActionResult<IEnumerable<TransactionViewModel>>> GetTransactions()
         {
             return await _context.Transactions
@@ -51,7 +50,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "Transaction.Read")]
         public async Task<ActionResult<TransactionViewModel>> GetTransaction(Guid id)
         {
             var transaction = await _context.Transactions
@@ -79,7 +77,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "Transaction.Write")]
         public async Task<ActionResult<TransactionViewModel>> PostTransaction(TransactionViewModel viewModel)
         {
             if (!ModelState.IsValid)

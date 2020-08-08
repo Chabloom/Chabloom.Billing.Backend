@@ -14,9 +14,9 @@ using Payments.Backend.Models;
 namespace Payments.Backend.Controllers
 {
     [Authorize]
-    [Produces("application/json")]
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
     public class AccountsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -30,7 +30,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "Account.Read")]
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
             return await _context.Accounts
@@ -51,7 +50,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "Account.Read")]
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
             var account = await _context.Accounts
@@ -80,7 +78,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        [Authorize(Policy = "Account.Write")]
         public async Task<IActionResult> PutAccount(Guid id, AccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
@@ -123,7 +120,6 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        [Authorize(Policy = "Account.Write")]
         public async Task<ActionResult<AccountViewModel>> PostAccount(AccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
