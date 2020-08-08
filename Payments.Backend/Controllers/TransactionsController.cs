@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Payments.Backend.Data;
 using Payments.Backend.Models;
-using Stripe;
 
 namespace Payments.Backend.Controllers
 {
@@ -105,42 +104,6 @@ namespace Payments.Backend.Controllers
             viewModel.Id = transaction.Id;
 
             return CreatedAtAction("GetTransaction", new {id = viewModel.Id}, viewModel);
-        }
-
-        [HttpPost("Intent")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        public async Task<ActionResult<string>> PostTransactionIntent(TransactionViewModel viewModel)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (viewModel == null)
-            {
-                return BadRequest();
-            }
-
-            StripeConfiguration.ApiKey = "sk_test_51H6f58B2z6MUftpdlRIg5n2dTmaNRD2gLfGNQEHyYWHSyC5DUa6hVsZKBLj9w1Lg5LwSVnueZxD6xfsjlMera5L100BDz1OkHn";
-
-            var options = new PaymentIntentCreateOptions
-            {
-                Amount = viewModel.Amount,
-                Currency = "usd",
-                Metadata = new Dictionary<string, string>
-                {
-                    { "integration_check", "accept_a_payment" },
-                },
-            };
-
-            var service = new PaymentIntentService();
-            var paymentIntent = await service.CreateAsync(options)
-                .ConfigureAwait(false);
-
-            return Ok(paymentIntent.ClientSecret);
         }
     }
 }
