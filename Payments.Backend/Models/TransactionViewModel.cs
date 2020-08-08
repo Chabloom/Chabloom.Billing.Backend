@@ -10,15 +10,16 @@ namespace Payments.Backend.Models
         public Guid Id { get; set; }
 
         [Required]
-        public int Amount { get; set; }
+        public string Name { get; set; }
 
         [Required]
-        public string ReferenceId { get; set; }
+        public string ExternalId { get; set; }
 
         [Required]
-        public DateTimeOffset Timestamp { get; set; }
+        public decimal Amount { get; set; }
 
-        [Required]
+        public Guid Account { get; set; }
+
         public Guid Bill { get; set; }
     }
 }

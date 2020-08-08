@@ -3,11 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using Payments.Backend.Data;
 
 namespace Payments.Backend.Models
 {
-    [Table("PaymentsAccounts")]
     public class Account
     {
         [Required]
@@ -18,16 +17,35 @@ namespace Payments.Backend.Models
         public string Name { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
+        public string ExternalId { get; set; }
+
+        #region Authorization
 
         [Required]
-        public bool Enabled { get; set; } = true;
+        public string OwnerId { get; set; }
 
-        public List<PaymentSchedule> PaymentSchedules { get; set; }
+        #endregion
+
+        #region Auditing
+
+        public ApplicationUser CreatedAccount { get; set; }
+
+        [Required]
+        public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
+
+        public ApplicationUser UpdatedAccount { get; set; }
+
+        [Required]
+        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
+
+        #endregion
+
+        #region Foreign Keys
 
         public List<Bill> Bills { get; set; }
 
-        [Required]
-        public Partition Partition { get; set; }
+        public List<BillSchedule> BillSchedules { get; set; }
+
+        #endregion
     }
 }

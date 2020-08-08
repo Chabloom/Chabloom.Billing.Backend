@@ -1,7 +1,6 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Payments.Backend.Models
@@ -14,15 +13,8 @@ namespace Payments.Backend.Models
         public string Name { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
+        public string ExternalId { get; set; }
 
-        [Required]
-        public bool Enabled { get; set; } = true;
-
-        public List<Guid> PaymentSchedules { get; set; }
-
-        public List<Guid> Bills { get; set; }
-
-        public Guid Partition { get; set; }
+        public string OwnerId { get; set; }
     }
 }

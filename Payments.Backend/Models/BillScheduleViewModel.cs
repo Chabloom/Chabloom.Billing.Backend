@@ -2,22 +2,18 @@
 
 using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Payments.Backend.Models
 {
-    [Table("PaymentsPaymentSchedules")]
-    public class PaymentSchedule
+    public class BillScheduleViewModel
     {
-        [Required]
-        [Key]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
 
         [Required]
         public string Name { get; set; }
 
         [Required]
-        public int Amount { get; set; }
+        public decimal Amount { get; set; }
 
         [Required]
         public int DayDue { get; set; }
@@ -28,7 +24,6 @@ namespace Payments.Backend.Models
         [Required]
         public bool Enabled { get; set; } = true;
 
-        [Required]
-        public Account Account { get; set; }
+        public Guid Account { get; set; }
     }
 }

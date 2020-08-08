@@ -1,13 +1,14 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Payments.Backend.Data;
 
 namespace Payments.Backend.Models
 {
-    public class Transaction
+    public class BillSchedule
     {
         [Required]
         [Key]
@@ -17,11 +18,17 @@ namespace Payments.Backend.Models
         public string Name { get; set; }
 
         [Required]
-        public string ExternalId { get; set; }
-
-        [Required]
         [Column(TypeName = "decimal(18, 2)")]
         public decimal Amount { get; set; }
+
+        [Required]
+        public int DayDue { get; set; }
+
+        [Required]
+        public int MonthInterval { get; set; }
+
+        [Required]
+        public bool Enabled { get; set; } = true;
 
         #region Authorization
 
@@ -46,8 +53,7 @@ namespace Payments.Backend.Models
 
         #region Foreign Keys
 
-        [Required]
-        public Bill Bill { get; set; }
+        public List<Bill> Bills { get; set; }
 
         #endregion
     }

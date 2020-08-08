@@ -1,7 +1,9 @@
 // Copyright 2020 Chabloom LC. All rights reserved.
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,9 +27,21 @@ namespace Payments.Backend
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<PaymentServiceDbContext>(options =>
+            services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
+
+            services.AddIdentityCore<ApplicationUser>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
+
+            services.AddIdentityServer()
+                .AddApiAuthorization<ApplicationUser, ApplicationDbContext>();
+
+            services.AddAuthentication()
+                .AddIdentityServerJwt();
+
+            services.AddControllers();
 
             services.AddCors(options =>
             {
@@ -39,8 +53,6 @@ namespace Payments.Backend
                             .AllowAnyMethod();
                     });
             });
-
-            services.AddControllers();
 
             services.AddSwaggerGen(options =>
             {
@@ -73,6 +85,10 @@ namespace Payments.Backend
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseAuthentication();
+
+            app.UseIdentityServer();
 
             app.UseAuthorization();
 
