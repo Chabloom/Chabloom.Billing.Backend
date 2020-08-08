@@ -13,6 +13,9 @@ namespace Payments.Backend.Models
         public string Name { get; set; }
 
         [Required]
+        public string PrimaryAddress { get; set; }
+
+        [Required]
         public string ExternalId { get; set; }
 
         public string OwnerId { get; set; }

@@ -39,6 +39,7 @@ namespace Payments.Backend.Controllers
                 {
                     Id = x.Id,
                     Name = x.Name,
+                    PrimaryAddress = x.PrimaryAddress,
                     ExternalId = x.ExternalId,
                     OwnerId = x.Owner.Id
                 })
@@ -67,6 +68,7 @@ namespace Payments.Backend.Controllers
             {
                 Id = account.Id,
                 Name = account.Name,
+                PrimaryAddress = account.PrimaryAddress,
                 ExternalId = account.ExternalId,
                 OwnerId = account.Owner.Id
             };
@@ -101,6 +103,7 @@ namespace Payments.Backend.Controllers
             }
 
             account.Name = viewModel.Name;
+            account.PrimaryAddress = viewModel.PrimaryAddress;
             account.ExternalId = viewModel.ExternalId;
             account.Owner = await _context.Users
                 .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
@@ -136,6 +139,7 @@ namespace Payments.Backend.Controllers
             var account = new Account
             {
                 Name = viewModel.Name,
+                PrimaryAddress = viewModel.PrimaryAddress,
                 ExternalId = viewModel.ExternalId,
                 Owner = await _context.Users
                     .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
