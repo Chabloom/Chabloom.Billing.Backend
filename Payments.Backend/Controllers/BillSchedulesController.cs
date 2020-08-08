@@ -56,25 +56,25 @@ namespace Payments.Backend.Controllers
         [Authorize(Policy = "BillSchedule.Read")]
         public async Task<ActionResult<BillScheduleViewModel>> GetBillSchedule(Guid id)
         {
-            var paymentSchedule = await _context.BillSchedules
+            var billSchedule = await _context.BillSchedules
                 .Include(x => x.Account)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
-            if (paymentSchedule == null)
+            if (billSchedule == null)
             {
                 return NotFound();
             }
 
             return new BillScheduleViewModel
             {
-                Id = paymentSchedule.Id,
-                Name = paymentSchedule.Name,
-                Amount = paymentSchedule.Amount,
-                DayDue = paymentSchedule.DayDue,
-                MonthInterval = paymentSchedule.MonthInterval,
-                Enabled = paymentSchedule.Enabled,
-                Account = paymentSchedule.Account.Id
+                Id = billSchedule.Id,
+                Name = billSchedule.Name,
+                Amount = billSchedule.Amount,
+                DayDue = billSchedule.DayDue,
+                MonthInterval = billSchedule.MonthInterval,
+                Enabled = billSchedule.Enabled,
+                Account = billSchedule.Account.Id
             };
         }
 
@@ -97,27 +97,27 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            var paymentSchedule = await _context
+            var billSchedule = await _context
                 .BillSchedules
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (paymentSchedule == null)
+            if (billSchedule == null)
             {
                 return NotFound();
             }
 
-            paymentSchedule.Name = viewModel.Name;
-            paymentSchedule.Amount = viewModel.Amount;
-            paymentSchedule.DayDue = viewModel.DayDue;
-            paymentSchedule.MonthInterval = viewModel.MonthInterval;
-            paymentSchedule.Enabled = viewModel.Enabled;
-            paymentSchedule.Account = await _context.Accounts
+            billSchedule.Name = viewModel.Name;
+            billSchedule.Amount = viewModel.Amount;
+            billSchedule.DayDue = viewModel.DayDue;
+            billSchedule.MonthInterval = viewModel.MonthInterval;
+            billSchedule.Enabled = viewModel.Enabled;
+            billSchedule.Account = await _context.Accounts
                 .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                 .ConfigureAwait(false);
-            paymentSchedule.UpdatedUser = User.GetDisplayName();
-            paymentSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
+            billSchedule.UpdatedUser = User.GetDisplayName();
+            billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
-            _context.Update(paymentSchedule);
+            _context.Update(billSchedule);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
@@ -142,7 +142,7 @@ namespace Payments.Backend.Controllers
                 return BadRequest();
             }
 
-            var paymentSchedule = new BillSchedule
+            var billSchedule = new BillSchedule
             {
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
@@ -156,12 +156,12 @@ namespace Payments.Backend.Controllers
                 UpdatedUser = User.GetDisplayName()
             };
 
-            await _context.BillSchedules.AddAsync(paymentSchedule)
+            await _context.BillSchedules.AddAsync(billSchedule)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            viewModel.Id = paymentSchedule.Id;
+            viewModel.Id = billSchedule.Id;
 
             return CreatedAtAction("GetBillSchedule", new { id = viewModel.Id }, viewModel);
         }
