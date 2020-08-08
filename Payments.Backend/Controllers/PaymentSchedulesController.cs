@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Payments.Backend.Data;
@@ -11,6 +12,7 @@ using Payments.Backend.Models;
 
 namespace Payments.Backend.Controllers
 {
+    [Authorize]
     [Produces("application/json")]
     [Route("api/[controller]")]
     [ApiController]
@@ -27,6 +29,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
+        [Authorize(Policy = "PaymentSchedule.Read")]
         public async Task<ActionResult<IEnumerable<PaymentScheduleViewModel>>> GetPaymentSchedules()
         {
             return await _context.PaymentSchedules
@@ -49,6 +52,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
+        [Authorize(Policy = "PaymentSchedule.Read")]
         public async Task<ActionResult<PaymentScheduleViewModel>> GetPaymentSchedule(Guid id)
         {
             var paymentSchedule = await _context.PaymentSchedules
@@ -79,6 +83,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
+        [Authorize(Policy = "PaymentSchedule.Write")]
         public async Task<IActionResult> PutPaymentSchedule(Guid id, PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
@@ -121,6 +126,7 @@ namespace Payments.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
+        [Authorize(Policy = "PaymentSchedule.Write")]
         public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
