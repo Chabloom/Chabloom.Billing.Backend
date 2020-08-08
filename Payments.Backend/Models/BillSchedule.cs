@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Payments.Backend.Data;
 
 namespace Payments.Backend.Models
 {
@@ -30,21 +29,14 @@ namespace Payments.Backend.Models
         [Required]
         public bool Enabled { get; set; } = true;
 
-        #region Authorization
-
-        [Required]
-        public Account Account { get; set; }
-
-        #endregion
-
         #region Auditing
 
-        public ApplicationUser CreatedAccount { get; set; }
+        public string CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
-        public ApplicationUser UpdatedAccount { get; set; }
+        public string UpdatedUser { get; set; }
 
         [Required]
         public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
@@ -52,6 +44,9 @@ namespace Payments.Backend.Models
         #endregion
 
         #region Foreign Keys
+
+        [Required]
+        public Account Account { get; set; }
 
         public List<Bill> Bills { get; set; }
 

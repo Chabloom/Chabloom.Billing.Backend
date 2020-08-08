@@ -10,7 +10,7 @@ using Payments.Backend.Data;
 namespace Payments.Backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20200808205801_1")]
+    [Migration("20200808211929_1")]
     partial class _1
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -309,11 +309,11 @@ namespace Payments.Backend.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CreatedAccountId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTimeOffset>("CreatedTimestamp")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedUser")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
@@ -325,19 +325,17 @@ namespace Payments.Backend.Migrations
 
                     b.Property<string>("OwnerId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UpdatedAccountId")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTimeOffset>("UpdatedTimestamp")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("UpdatedUser")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAccountId");
-
-                    b.HasIndex("UpdatedAccountId");
+                    b.HasIndex("OwnerId");
 
                     b.ToTable("Accounts");
                 });
@@ -357,11 +355,11 @@ namespace Payments.Backend.Migrations
                     b.Property<Guid?>("BillScheduleId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CreatedAccountId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTimeOffset>("CreatedTimestamp")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedUser")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("date");
@@ -370,21 +368,17 @@ namespace Payments.Backend.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UpdatedAccountId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTimeOffset>("UpdatedTimestamp")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UpdatedUser")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
 
                     b.HasIndex("BillScheduleId");
-
-                    b.HasIndex("CreatedAccountId");
-
-                    b.HasIndex("UpdatedAccountId");
 
                     b.ToTable("Bills");
                 });
@@ -401,11 +395,11 @@ namespace Payments.Backend.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18, 2)");
 
-                    b.Property<string>("CreatedAccountId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTimeOffset>("CreatedTimestamp")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedUser")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("DayDue")
                         .HasColumnType("int");
@@ -420,19 +414,15 @@ namespace Payments.Backend.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UpdatedAccountId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTimeOffset>("UpdatedTimestamp")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UpdatedUser")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
-
-                    b.HasIndex("CreatedAccountId");
-
-                    b.HasIndex("UpdatedAccountId");
 
                     b.ToTable("BillSchedules");
                 });
@@ -443,20 +433,17 @@ namespace Payments.Backend.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<Guid>("BillId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CreatedAccountId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTimeOffset>("CreatedTimestamp")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedUser")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
@@ -466,21 +453,9 @@ namespace Payments.Backend.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UpdatedAccountId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTimeOffset>("UpdatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId");
-
                     b.HasIndex("BillId");
-
-                    b.HasIndex("CreatedAccountId");
-
-                    b.HasIndex("UpdatedAccountId");
 
                     b.ToTable("Transactions");
                 });
@@ -538,13 +513,11 @@ namespace Payments.Backend.Migrations
 
             modelBuilder.Entity("Payments.Backend.Models.Account", b =>
                 {
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "CreatedAccount")
-                        .WithMany()
-                        .HasForeignKey("CreatedAccountId");
-
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "UpdatedAccount")
-                        .WithMany()
-                        .HasForeignKey("UpdatedAccountId");
+                    b.HasOne("Payments.Backend.Data.ApplicationUser", "Owner")
+                        .WithMany("Accounts")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Payments.Backend.Models.Bill", b =>
@@ -558,14 +531,6 @@ namespace Payments.Backend.Migrations
                     b.HasOne("Payments.Backend.Models.BillSchedule", "BillSchedule")
                         .WithMany("Bills")
                         .HasForeignKey("BillScheduleId");
-
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "CreatedAccount")
-                        .WithMany()
-                        .HasForeignKey("CreatedAccountId");
-
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "UpdatedAccount")
-                        .WithMany()
-                        .HasForeignKey("UpdatedAccountId");
                 });
 
             modelBuilder.Entity("Payments.Backend.Models.BillSchedule", b =>
@@ -575,37 +540,15 @@ namespace Payments.Backend.Migrations
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "CreatedAccount")
-                        .WithMany()
-                        .HasForeignKey("CreatedAccountId");
-
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "UpdatedAccount")
-                        .WithMany()
-                        .HasForeignKey("UpdatedAccountId");
                 });
 
             modelBuilder.Entity("Payments.Backend.Models.Transaction", b =>
                 {
-                    b.HasOne("Payments.Backend.Models.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Payments.Backend.Models.Bill", "Bill")
                         .WithMany("Transactions")
                         .HasForeignKey("BillId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "CreatedAccount")
-                        .WithMany()
-                        .HasForeignKey("CreatedAccountId");
-
-                    b.HasOne("Payments.Backend.Data.ApplicationUser", "UpdatedAccount")
-                        .WithMany()
-                        .HasForeignKey("UpdatedAccountId");
                 });
 #pragma warning restore 612, 618
         }

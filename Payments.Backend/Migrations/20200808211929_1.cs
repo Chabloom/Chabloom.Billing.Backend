@@ -108,27 +108,21 @@ namespace Payments.Backend.Migrations
                     Id = table.Column<Guid>(nullable: false),
                     Name = table.Column<string>(nullable: false),
                     ExternalId = table.Column<string>(nullable: false),
-                    OwnerId = table.Column<string>(nullable: false),
-                    CreatedAccountId = table.Column<string>(nullable: true),
+                    CreatedUser = table.Column<string>(nullable: true),
                     CreatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
-                    UpdatedAccountId = table.Column<string>(nullable: true),
-                    UpdatedTimestamp = table.Column<DateTimeOffset>(nullable: false)
+                    UpdatedUser = table.Column<string>(nullable: true),
+                    UpdatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
+                    OwnerId = table.Column<string>(nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Accounts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Accounts_AspNetUsers_CreatedAccountId",
-                        column: x => x.CreatedAccountId,
+                        name: "FK_Accounts_AspNetUsers_OwnerId",
+                        column: x => x.OwnerId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Accounts_AspNetUsers_UpdatedAccountId",
-                        column: x => x.UpdatedAccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -226,11 +220,11 @@ namespace Payments.Backend.Migrations
                     DayDue = table.Column<int>(nullable: false),
                     MonthInterval = table.Column<int>(nullable: false),
                     Enabled = table.Column<bool>(nullable: false),
-                    AccountId = table.Column<Guid>(nullable: false),
-                    CreatedAccountId = table.Column<string>(nullable: true),
+                    CreatedUser = table.Column<string>(nullable: true),
                     CreatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
-                    UpdatedAccountId = table.Column<string>(nullable: true),
-                    UpdatedTimestamp = table.Column<DateTimeOffset>(nullable: false)
+                    UpdatedUser = table.Column<string>(nullable: true),
+                    UpdatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
+                    AccountId = table.Column<Guid>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -241,18 +235,6 @@ namespace Payments.Backend.Migrations
                         principalTable: "Accounts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_BillSchedules_AspNetUsers_CreatedAccountId",
-                        column: x => x.CreatedAccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_BillSchedules_AspNetUsers_UpdatedAccountId",
-                        column: x => x.UpdatedAccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -263,11 +245,11 @@ namespace Payments.Backend.Migrations
                     Name = table.Column<string>(nullable: false),
                     Amount = table.Column<decimal>(type: "decimal(18, 2)", nullable: false),
                     DueDate = table.Column<DateTime>(type: "date", nullable: false),
-                    AccountId = table.Column<Guid>(nullable: false),
-                    CreatedAccountId = table.Column<string>(nullable: true),
+                    CreatedUser = table.Column<string>(nullable: true),
                     CreatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
-                    UpdatedAccountId = table.Column<string>(nullable: true),
+                    UpdatedUser = table.Column<string>(nullable: true),
                     UpdatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
+                    AccountId = table.Column<Guid>(nullable: false),
                     BillScheduleId = table.Column<Guid>(nullable: true)
                 },
                 constraints: table =>
@@ -285,18 +267,6 @@ namespace Payments.Backend.Migrations
                         principalTable: "BillSchedules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Bills_AspNetUsers_CreatedAccountId",
-                        column: x => x.CreatedAccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Bills_AspNetUsers_UpdatedAccountId",
-                        column: x => x.UpdatedAccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -307,51 +277,25 @@ namespace Payments.Backend.Migrations
                     Name = table.Column<string>(nullable: false),
                     ExternalId = table.Column<string>(nullable: false),
                     Amount = table.Column<decimal>(type: "decimal(18, 2)", nullable: false),
-                    AccountId = table.Column<Guid>(nullable: false),
-                    CreatedAccountId = table.Column<string>(nullable: true),
-                    CreatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
-                    UpdatedAccountId = table.Column<string>(nullable: true),
-                    UpdatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
-                    BillId = table.Column<Guid>(nullable: false)
+                    BillId = table.Column<Guid>(nullable: false),
+                    CreatedUser = table.Column<string>(nullable: true),
+                    CreatedTimestamp = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Transactions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Transactions_Accounts_AccountId",
-                        column: x => x.AccountId,
-                        principalTable: "Accounts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Transactions_Bills_BillId",
                         column: x => x.BillId,
                         principalTable: "Bills",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Transactions_AspNetUsers_CreatedAccountId",
-                        column: x => x.CreatedAccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Transactions_AspNetUsers_UpdatedAccountId",
-                        column: x => x.UpdatedAccountId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Accounts_CreatedAccountId",
+                name: "IX_Accounts_OwnerId",
                 table: "Accounts",
-                column: "CreatedAccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Accounts_UpdatedAccountId",
-                table: "Accounts",
-                column: "UpdatedAccountId");
+                column: "OwnerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -403,29 +347,9 @@ namespace Payments.Backend.Migrations
                 column: "BillScheduleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Bills_CreatedAccountId",
-                table: "Bills",
-                column: "CreatedAccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Bills_UpdatedAccountId",
-                table: "Bills",
-                column: "UpdatedAccountId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_BillSchedules_AccountId",
                 table: "BillSchedules",
                 column: "AccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_BillSchedules_CreatedAccountId",
-                table: "BillSchedules",
-                column: "CreatedAccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_BillSchedules_UpdatedAccountId",
-                table: "BillSchedules",
-                column: "UpdatedAccountId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_DeviceCodes_DeviceCode",
@@ -449,24 +373,9 @@ namespace Payments.Backend.Migrations
                 columns: new[] { "SubjectId", "ClientId", "Type" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_AccountId",
-                table: "Transactions",
-                column: "AccountId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Transactions_BillId",
                 table: "Transactions",
                 column: "BillId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Transactions_CreatedAccountId",
-                table: "Transactions",
-                column: "CreatedAccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Transactions_UpdatedAccountId",
-                table: "Transactions",
-                column: "UpdatedAccountId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

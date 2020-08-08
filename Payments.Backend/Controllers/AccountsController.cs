@@ -33,12 +33,13 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
             return await _context.Accounts
+                .Include(x => x.Owner)
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     ExternalId = x.ExternalId,
-                    OwnerId = x.OwnerId
+                    OwnerId = x.Owner.Id
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -52,6 +53,7 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
             var account = await _context.Accounts
+                .Include(x => x.Owner)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
 
@@ -65,7 +67,7 @@ namespace Payments.Backend.Controllers
                 Id = account.Id,
                 Name = account.Name,
                 ExternalId = account.ExternalId,
-                OwnerId = account.OwnerId
+                OwnerId = account.Owner.Id
             };
         }
 
@@ -99,7 +101,9 @@ namespace Payments.Backend.Controllers
 
             account.Name = viewModel.Name;
             account.ExternalId = viewModel.ExternalId;
-            account.OwnerId = viewModel.OwnerId;
+            account.Owner = await _context.Users
+                .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
+                .ConfigureAwait(false);
 
             _context.Update(account);
             await _context.SaveChangesAsync()
@@ -130,7 +134,9 @@ namespace Payments.Backend.Controllers
             {
                 Name = viewModel.Name,
                 ExternalId = viewModel.ExternalId,
-                OwnerId = viewModel.OwnerId
+                Owner = await _context.Users
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
+                    .ConfigureAwait(false)
             };
 
             await _context.Accounts.AddAsync(account)

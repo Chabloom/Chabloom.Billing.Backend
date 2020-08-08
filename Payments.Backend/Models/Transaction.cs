@@ -3,7 +3,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Payments.Backend.Data;
 
 namespace Payments.Backend.Models
 {
@@ -23,31 +22,19 @@ namespace Payments.Backend.Models
         [Column(TypeName = "decimal(18, 2)")]
         public decimal Amount { get; set; }
 
-        #region Authorization
+        #region Foreign Keys
 
         [Required]
-        public Account Account { get; set; }
+        public Bill Bill { get; set; }
 
         #endregion
 
         #region Auditing
 
-        public ApplicationUser CreatedAccount { get; set; }
+        public string CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
-
-        public ApplicationUser UpdatedAccount { get; set; }
-
-        [Required]
-        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
-
-        #endregion
-
-        #region Foreign Keys
-
-        [Required]
-        public Bill Bill { get; set; }
 
         #endregion
     }

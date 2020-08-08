@@ -19,21 +19,14 @@ namespace Payments.Backend.Models
         [Required]
         public string ExternalId { get; set; }
 
-        #region Authorization
-
-        [Required]
-        public string OwnerId { get; set; }
-
-        #endregion
-
         #region Auditing
 
-        public ApplicationUser CreatedAccount { get; set; }
+        public string CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
-        public ApplicationUser UpdatedAccount { get; set; }
+        public string UpdatedUser { get; set; }
 
         [Required]
         public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
@@ -41,6 +34,9 @@ namespace Payments.Backend.Models
         #endregion
 
         #region Foreign Keys
+
+        [Required]
+        public ApplicationUser Owner { get; set; }
 
         public List<Bill> Bills { get; set; }
 
