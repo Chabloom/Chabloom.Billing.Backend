@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using IdentityServer4.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -104,6 +105,8 @@ namespace Payments.Backend.Controllers
             account.Owner = await _context.Users
                 .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
                 .ConfigureAwait(false);
+            account.UpdatedUser = User.GetDisplayName();
+            account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
             await _context.SaveChangesAsync()
@@ -136,7 +139,9 @@ namespace Payments.Backend.Controllers
                 ExternalId = viewModel.ExternalId,
                 Owner = await _context.Users
                     .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
-                    .ConfigureAwait(false)
+                    .ConfigureAwait(false),
+                CreatedUser = User.GetDisplayName(),
+                UpdatedUser = User.GetDisplayName()
             };
 
             await _context.Accounts.AddAsync(account)

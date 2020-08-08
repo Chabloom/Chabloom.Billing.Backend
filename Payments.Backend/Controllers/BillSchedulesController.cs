@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using IdentityServer4.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -113,6 +114,8 @@ namespace Payments.Backend.Controllers
             paymentSchedule.Account = await _context.Accounts
                 .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                 .ConfigureAwait(false);
+            paymentSchedule.UpdatedUser = User.GetDisplayName();
+            paymentSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(paymentSchedule);
             await _context.SaveChangesAsync()
@@ -148,7 +151,9 @@ namespace Payments.Backend.Controllers
                 Enabled = viewModel.Enabled,
                 Account = await _context.Accounts
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
-                    .ConfigureAwait(false)
+                    .ConfigureAwait(false),
+                CreatedUser = User.GetDisplayName(),
+                UpdatedUser = User.GetDisplayName()
             };
 
             await _context.BillSchedules.AddAsync(paymentSchedule)
