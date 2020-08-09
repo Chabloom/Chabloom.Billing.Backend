@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using IdentityServer4.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -97,7 +96,8 @@ namespace Payments.Backend.Controllers
                 Bill = await _context.Bills
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Bill)
                     .ConfigureAwait(false),
-                CreatedUser = User.GetDisplayName()
+                CreatedUser = User.Identity.Name,
+                UpdatedUser = User.Identity.Name
             };
 
             await _context.Transactions.AddAsync(transaction)

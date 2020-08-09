@@ -18,6 +18,6 @@ namespace Payments.Backend.Models
         [Required]
         public string ExternalId { get; set; }
 
-        public string OwnerId { get; set; }
+        public string Owner { get; set; }
     }
 }

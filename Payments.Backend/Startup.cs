@@ -1,13 +1,11 @@
 // Copyright 2020 Chabloom LC. All rights reserved.
 
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.OpenApi.Models;
 using Payments.Backend.Data;
 
 namespace Payments.Backend
@@ -30,15 +28,6 @@ namespace Payments.Backend
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
 
-            services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
-                .AddEntityFrameworkStores<ApplicationDbContext>();
-
-            services.AddIdentityServer()
-                .AddApiAuthorization<ApplicationUser, ApplicationDbContext>();
-
-            services.AddAuthentication()
-                .AddIdentityServerJwt();
-
             services.AddControllers();
 
             services.AddCors(options =>
@@ -50,16 +39,6 @@ namespace Payments.Backend
                             .AllowAnyHeader()
                             .AllowAnyMethod();
                     });
-            });
-
-            services.AddSwaggerGen(options =>
-            {
-                options.SwaggerDoc("v1", new OpenApiInfo
-                {
-                    Title = "Chabloom Payments",
-                    Description = "Chabloom Payments v1 API",
-                    Version = "v1"
-                });
             });
         }
 
@@ -73,21 +52,11 @@ namespace Payments.Backend
                 app.UseCors(DevelopmentCorsName);
             }
 
-            app.UseSwagger();
-
-            app.UseSwaggerUI(options =>
-            {
-                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Chabloom Payments v1 API");
-            });
-
             app.UseHttpsRedirection();
 
             app.UseRouting();
 
             app.UseAuthentication();
-
-            app.UseIdentityServer();
-
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });

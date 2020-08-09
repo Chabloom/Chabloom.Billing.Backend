@@ -29,26 +29,24 @@ namespace Payments.Backend.Models
         [Required]
         public bool Enabled { get; set; } = true;
 
+        [Required]
+        public Account Account { get; set; }
+
+        public List<Bill> Bills { get; set; }
+
         #region Auditing
 
+        [Required]
         public string CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
+        [Required]
         public string UpdatedUser { get; set; }
 
         [Required]
         public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
-
-        #endregion
-
-        #region Foreign Keys
-
-        [Required]
-        public Account Account { get; set; }
-
-        public List<Bill> Bills { get; set; }
 
         #endregion
     }

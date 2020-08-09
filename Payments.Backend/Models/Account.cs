@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Payments.Backend.Data;
 
 namespace Payments.Backend.Models
 {
@@ -22,28 +21,26 @@ namespace Payments.Backend.Models
         [Required]
         public string ExternalId { get; set; }
 
+        [Required]
+        public string Owner { get; set; }
+
+        public List<Bill> Bills { get; set; }
+
+        public List<BillSchedule> BillSchedules { get; set; }
+
         #region Auditing
 
+        [Required]
         public string CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
+        [Required]
         public string UpdatedUser { get; set; }
 
         [Required]
         public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
-
-        #endregion
-
-        #region Foreign Keys
-
-        [Required]
-        public ApplicationUser Owner { get; set; }
-
-        public List<Bill> Bills { get; set; }
-
-        public List<BillSchedule> BillSchedules { get; set; }
 
         #endregion
     }

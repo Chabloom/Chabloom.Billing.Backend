@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using IdentityServer4.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,14 +32,13 @@ namespace Payments.Backend.Controllers
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
             return await _context.Accounts
-                .Include(x => x.Owner)
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     PrimaryAddress = x.PrimaryAddress,
                     ExternalId = x.ExternalId,
-                    OwnerId = x.Owner.Id
+                    Owner = x.Owner
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -68,7 +66,7 @@ namespace Payments.Backend.Controllers
                 Name = account.Name,
                 PrimaryAddress = account.PrimaryAddress,
                 ExternalId = account.ExternalId,
-                OwnerId = account.Owner.Id
+                Owner = account.Owner
             };
         }
 
@@ -102,10 +100,8 @@ namespace Payments.Backend.Controllers
             account.Name = viewModel.Name;
             account.PrimaryAddress = viewModel.PrimaryAddress;
             account.ExternalId = viewModel.ExternalId;
-            account.Owner = await _context.Users
-                .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
-                .ConfigureAwait(false);
-            account.UpdatedUser = User.GetDisplayName();
+            account.Owner = viewModel.Owner;
+            account.UpdatedUser = User.Identity.Name;
             account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
@@ -137,11 +133,9 @@ namespace Payments.Backend.Controllers
                 Name = viewModel.Name,
                 PrimaryAddress = viewModel.PrimaryAddress,
                 ExternalId = viewModel.ExternalId,
-                Owner = await _context.Users
-                    .FirstOrDefaultAsync(x => x.Id == viewModel.OwnerId)
-                    .ConfigureAwait(false),
-                CreatedUser = User.GetDisplayName(),
-                UpdatedUser = User.GetDisplayName()
+                Owner = viewModel.Owner,
+                CreatedUser = User.Identity.Name,
+                UpdatedUser = User.Identity.Name
             };
 
             await _context.Accounts.AddAsync(account)

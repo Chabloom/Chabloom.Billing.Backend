@@ -22,19 +22,22 @@ namespace Payments.Backend.Models
         [Column(TypeName = "decimal(18, 2)")]
         public decimal Amount { get; set; }
 
-        #region Foreign Keys
-
         [Required]
         public Bill Bill { get; set; }
 
-        #endregion
-
         #region Auditing
 
+        [Required]
         public string CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
+
+        [Required]
+        public string UpdatedUser { get; set; }
+
+        [Required]
+        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
         #endregion
     }
