@@ -32,8 +32,6 @@ namespace Payments.Backend
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options => Configuration.GetSection("JwtBearerOptions").Get<JwtBearerOptions>());
 
-            services.AddControllers();
-
             services.AddCors(options =>
             {
                 options.AddPolicy(DevelopmentCorsName,
@@ -44,6 +42,8 @@ namespace Payments.Backend
                             .AllowAnyMethod();
                     });
             });
+
+            services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -52,7 +52,7 @@ namespace Payments.Backend
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-
+                app.UseDatabaseErrorPage();
                 app.UseCors(DevelopmentCorsName);
             }
 
