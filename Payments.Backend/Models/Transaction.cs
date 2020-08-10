@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Payments.Backend.Models
 {
+    [Table("PaymentsTransactions")]
     public class Transaction
     {
         [Required]
