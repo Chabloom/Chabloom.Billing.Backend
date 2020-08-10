@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Payments.Backend.Data;
 using Payments.Backend.Models;
 
@@ -19,10 +20,12 @@ namespace Payments.Backend.Controllers
     public class BillSchedulesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<BillSchedulesController> _logger;
 
-        public BillSchedulesController(ApplicationDbContext context)
+        public BillSchedulesController(ApplicationDbContext context, ILogger<BillSchedulesController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpGet]
