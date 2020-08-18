@@ -1,0 +1,1 @@
+dotnet ef migrations add ApplicationDbMigration1 --context ApplicationDbContext -o Data/Migrations/ApplicationDb
