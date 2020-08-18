@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
@@ -34,7 +35,15 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
             return await _context.Accounts
+                .Where(x => x.Owner == userId)
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
@@ -53,14 +62,26 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
+            // Find the specified account
             var account = await _context.Accounts
-                .Include(x => x.Owner)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-
             if (account == null)
             {
                 return NotFound();
+            }
+
+            // Ensure the user owns the account
+            if (account.Owner != userId)
+            {
+                return Forbid();
             }
 
             return new AccountViewModel
@@ -91,6 +112,14 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
+            // Find the specified account
             var account = await _context
                 .Accounts
                 .FirstOrDefaultAsync(x => x.Id == id)
@@ -100,11 +129,17 @@ namespace Chabloom.Payments.Controllers
                 return NotFound();
             }
 
+            // Ensure the user owns the account
+            if (account.Owner != userId)
+            {
+                return Forbid();
+            }
+
             account.Name = viewModel.Name;
             account.PrimaryAddress = viewModel.PrimaryAddress;
             account.ExternalId = viewModel.ExternalId;
             account.Owner = viewModel.Owner;
-            account.UpdatedUser = User.Identity.Name;
+            account.UpdatedUser = userId;
             account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
@@ -131,14 +166,21 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
             var account = new Account
             {
                 Name = viewModel.Name,
                 PrimaryAddress = viewModel.PrimaryAddress,
                 ExternalId = viewModel.ExternalId,
                 Owner = viewModel.Owner,
-                CreatedUser = User.Identity.Name,
-                UpdatedUser = User.Identity.Name
+                CreatedUser = userId,
+                UpdatedUser = userId
             };
 
             await _context.Accounts.AddAsync(account)

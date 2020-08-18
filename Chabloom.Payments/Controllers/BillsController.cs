@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
@@ -34,6 +35,13 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<BillViewModel>>> GetBills()
         {
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
             return await _context.Bills
                 .Include(x => x.Account)
                 .Include(x => x.BillSchedule)
@@ -56,15 +64,28 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<BillViewModel>> GetBill(Guid id)
         {
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
+            // Find the specified bill
             var bill = await _context.Bills
                 .Include(x => x.Account)
                 .Include(x => x.BillSchedule)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-
             if (bill == null)
             {
                 return NotFound();
+            }
+
+            // Ensure the user owns the account
+            if (bill.Account.Owner != userId)
+            {
+                return Forbid();
             }
 
             return new BillViewModel
@@ -96,13 +117,27 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            var bill = await _context
-                .Bills
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
+            // Find the specified bill
+            var bill = await _context.Bills
+                .Include(x => x.Account)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (bill == null)
             {
                 return NotFound();
+            }
+
+            // Ensure the user owns the account
+            if (bill.Account.Owner != userId)
+            {
+                return Forbid();
             }
 
             bill.Name = viewModel.Name;
@@ -114,7 +149,7 @@ namespace Chabloom.Payments.Controllers
             bill.BillSchedule = await _context.BillSchedules
                 .FirstOrDefaultAsync(x => x.Id == viewModel.BillSchedule)
                 .ConfigureAwait(false);
-            bill.UpdatedUser = User.Identity.Name;
+            bill.UpdatedUser = userId;
             bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(bill);
@@ -141,6 +176,13 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
             var bill = new Bill
             {
                 Name = viewModel.Name,
@@ -152,8 +194,8 @@ namespace Chabloom.Payments.Controllers
                 BillSchedule = await _context.BillSchedules
                     .FirstOrDefaultAsync(x => x.Id == viewModel.BillSchedule)
                     .ConfigureAwait(false),
-                CreatedUser = User.Identity.Name,
-                UpdatedUser = User.Identity.Name
+                CreatedUser = userId,
+                UpdatedUser = userId
             };
 
             await _context.Bills.AddAsync(bill)

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
@@ -34,8 +35,16 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<BillScheduleViewModel>>> GetBillSchedules()
         {
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
             return await _context.BillSchedules
                 .Include(x => x.Account)
+                .Where(x => x.Account.Owner == userId)
                 .Select(x => new BillScheduleViewModel
                 {
                     Id = x.Id,
@@ -56,14 +65,27 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<BillScheduleViewModel>> GetBillSchedule(Guid id)
         {
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
+            // Find the specified bill schedule
             var billSchedule = await _context.BillSchedules
                 .Include(x => x.Account)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-
             if (billSchedule == null)
             {
                 return NotFound();
+            }
+
+            // Ensure the user owns the account
+            if (billSchedule.Account.Owner != userId)
+            {
+                return Forbid();
             }
 
             return new BillScheduleViewModel
@@ -96,6 +118,14 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
+            // Find the specified bill schedule
             var billSchedule = await _context
                 .BillSchedules
                 .FirstOrDefaultAsync(x => x.Id == id)
@@ -103,6 +133,12 @@ namespace Chabloom.Payments.Controllers
             if (billSchedule == null)
             {
                 return NotFound();
+            }
+
+            // Ensure the user owns the account
+            if (billSchedule.Account.Owner != userId)
+            {
+                return Forbid();
             }
 
             billSchedule.Name = viewModel.Name;
@@ -113,7 +149,7 @@ namespace Chabloom.Payments.Controllers
             billSchedule.Account = await _context.Accounts
                 .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                 .ConfigureAwait(false);
-            billSchedule.UpdatedUser = User.Identity.Name;
+            billSchedule.UpdatedUser = userId;
             billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(billSchedule);
@@ -140,6 +176,13 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
+            // Get the current user
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Forbid();
+            }
+
             var billSchedule = new BillSchedule
             {
                 Name = viewModel.Name,
@@ -150,8 +193,8 @@ namespace Chabloom.Payments.Controllers
                 Account = await _context.Accounts
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                     .ConfigureAwait(false),
-                CreatedUser = User.Identity.Name,
-                UpdatedUser = User.Identity.Name
+                CreatedUser = userId,
+                UpdatedUser = userId
             };
 
             await _context.BillSchedules.AddAsync(billSchedule)
