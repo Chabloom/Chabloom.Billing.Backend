@@ -3,12 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,14 +21,11 @@ namespace Chabloom.Payments.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AccountsController> _logger;
-        private readonly UserManager<ApplicationUser> _userManager;
 
-        public AccountsController(ApplicationDbContext context, ILogger<AccountsController> logger,
-            UserManager<ApplicationUser> userManager)
+        public AccountsController(ApplicationDbContext context, ILogger<AccountsController> logger)
         {
             _context = context;
             _logger = logger;
-            _userManager = userManager;
         }
 
         [HttpGet]
@@ -39,15 +34,6 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
-            // Find the logged in user
-            var user = await _userManager.FindByIdAsync(User.FindFirst(ClaimTypes.NameIdentifier)?.Value)
-                .ConfigureAwait(false);
-            if (user == null)
-            {
-                return Unauthorized();
-            }
-
-            // Get all accounts belonging to the user
             return await _context.Accounts
                 .Select(x => new AccountViewModel
                 {
@@ -67,14 +53,6 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
-            // Find the logged in user
-            var user = await _userManager.FindByIdAsync(User.FindFirst(ClaimTypes.NameIdentifier)?.Value)
-                .ConfigureAwait(false);
-            if (user == null)
-            {
-                return Unauthorized();
-            }
-
             var account = await _context.Accounts
                 .Include(x => x.Owner)
                 .FirstOrDefaultAsync(x => x.Id == id)
@@ -113,14 +91,6 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // Find the logged in user
-            var user = await _userManager.FindByIdAsync(User.FindFirst(ClaimTypes.NameIdentifier)?.Value)
-                .ConfigureAwait(false);
-            if (user == null)
-            {
-                return Unauthorized();
-            }
-
             var account = await _context
                 .Accounts
                 .FirstOrDefaultAsync(x => x.Id == id)
@@ -134,7 +104,7 @@ namespace Chabloom.Payments.Controllers
             account.PrimaryAddress = viewModel.PrimaryAddress;
             account.ExternalId = viewModel.ExternalId;
             account.Owner = viewModel.Owner;
-            account.UpdatedUser = user.Id;
+            account.UpdatedUser = User.Identity.Name;
             account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
@@ -161,22 +131,14 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // Find the logged in user
-            var user = await _userManager.FindByIdAsync(User.FindFirst(ClaimTypes.NameIdentifier)?.Value)
-                .ConfigureAwait(false);
-            if (user == null)
-            {
-                return Unauthorized();
-            }
-
             var account = new Account
             {
                 Name = viewModel.Name,
                 PrimaryAddress = viewModel.PrimaryAddress,
                 ExternalId = viewModel.ExternalId,
                 Owner = viewModel.Owner,
-                CreatedUser = user.Id,
-                UpdatedUser = user.Id
+                CreatedUser = User.Identity.Name,
+                UpdatedUser = User.Identity.Name
             };
 
             await _context.Accounts.AddAsync(account)
