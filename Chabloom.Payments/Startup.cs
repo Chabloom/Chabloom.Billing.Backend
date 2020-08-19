@@ -31,10 +31,20 @@ namespace Chabloom.Payments
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
 
+            // Get the public address for the current environment
+            var frontendPublicAddress = System.Environment.GetEnvironmentVariable("FRONTEND_PUBLIC_ADDRESS");
+            var jwtPublicAddress = System.Environment.GetEnvironmentVariable("JWT_PUBLIC_ADDRESS");
+            if (string.IsNullOrEmpty(frontendPublicAddress) ||
+                string.IsNullOrEmpty(jwtPublicAddress))
+            {
+                frontendPublicAddress = "http://localhost:3000";
+                jwtPublicAddress = "https://localhost:44303";
+            }
+
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = "https://localhost:44303";
+                    options.Authority = jwtPublicAddress;
                     options.Audience = "Chabloom.Payments";
                 });
 
@@ -57,8 +67,7 @@ namespace Chabloom.Payments
                     options.AddPolicy("Development",
                         builder =>
                         {
-                            builder.WithOrigins("https://localhost:44334");
-                            builder.WithOrigins("http://localhost:3000");
+                            builder.WithOrigins(frontendPublicAddress);
                             builder.WithOrigins("http://localhost:3001");
                             builder.AllowAnyMethod();
                             builder.AllowAnyHeader();
@@ -78,8 +87,23 @@ namespace Chabloom.Payments
                     options.AddSecurityDefinition("openid", new OpenApiSecurityScheme
                     {
                         Type = SecuritySchemeType.OpenIdConnect,
-                        OpenIdConnectUrl = new Uri("https://localhost:44303/.well-known/openid-configuration")
+                        OpenIdConnectUrl = new Uri($"{jwtPublicAddress}/.well-known/openid-configuration")
                     });
+                });
+            }
+            else
+            {
+                // Setup production CORS
+                services.AddCors(options =>
+                {
+                    options.AddPolicy("Production",
+                        builder =>
+                        {
+                            builder.WithOrigins(frontendPublicAddress);
+                            builder.AllowAnyMethod();
+                            builder.AllowAnyHeader();
+                            builder.AllowCredentials();
+                        });
                 });
             }
         }
@@ -97,6 +121,10 @@ namespace Chabloom.Payments
                 {
                     options.SwaggerEndpoint("/swagger/v1/chabloom-payments-api.json", "Chabloom Payments v1 API");
                 });
+            }
+            else
+            {
+                app.UseCors("Production");
             }
 
             app.UseHttpsRedirection();
