@@ -1,30 +1,23 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Chabloom.Payments.Models
 {
-    [Table("PaymentsTransactions")]
-    public class Transaction
+    [Table("PaymentsTenantUsers")]
+    public class TenantUser
     {
         [Required]
         [Key]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
 
         [Required]
-        public string Name { get; set; }
+        public Tenant Tenant { get; set; }
 
-        [Required]
-        public string ExternalId { get; set; }
-
-        [Required]
-        [Column(TypeName = "decimal(18, 2)")]
-        public decimal Amount { get; set; }
-
-        [Required]
-        public Bill Bill { get; set; }
+        public List<TenantUserRole> UserRoles { get; set; }
 
         #region Auditing
 

@@ -3,9 +3,9 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Payments.Models
+namespace Chabloom.Payments.ViewModels
 {
-    public class AccountViewModel
+    public class TenantRoleViewModel
     {
         public Guid Id { get; set; }
 
@@ -13,11 +13,6 @@ namespace Chabloom.Payments.Models
         public string Name { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
-
-        [Required]
-        public string ExternalId { get; set; }
-
-        public string Owner { get; set; }
+        public Guid Tenant { get; set; }
     }
 }

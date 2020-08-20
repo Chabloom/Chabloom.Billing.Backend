@@ -3,9 +3,9 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Chabloom.Payments.Services
 {
@@ -21,30 +21,30 @@ namespace Chabloom.Payments.Services
         public async Task Run()
         {
             // Get enabled bill schedules that do not have a bill in the future
-            // TODO: Allow delay after due date to be configured
             var billSchedules = await _context.BillSchedules
                 .Include(x => x.Account)
-                .Include(x => x.Bills)
+                .ThenInclude(x => x.Bills)
                 .Where(x => x.Enabled)
-                .Where(x => x.Bills.Where(y => y.DueDate >= DateTime.UtcNow.Date.AddDays(10)).ToList().Count == 0)
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            // Create bills for the bill schedules
             // TODO: Account for end of year and end of month
-            var bills = billSchedules.Select(schedule => new Bill
-            {
-                Name = $"{schedule.Name}",
-                Amount = schedule.Amount,
-                DueDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, schedule.DayDue),
-                Account = schedule.Account,
-                BillSchedule = schedule,
-                CreatedUser = "GenerateBills",
-                UpdatedUser = "GenerateBills"
-            });
+            var newBills = (from billSchedule in billSchedules
+                let dueDates = billSchedule.Account.Bills
+                    .Where(x => x.DueDate >= DateTime.UtcNow.Date)
+                where !dueDates.Any()
+                select new Bill
+                {
+                    Name = $"{billSchedule.Name}",
+                    Amount = billSchedule.Amount,
+                    DueDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, billSchedule.DayDue),
+                    Account = billSchedule.Account,
+                    CreatedUser = "GenerateBills",
+                    UpdatedUser = "GenerateBills"
+                }).ToList();
 
             // Add the bills to the database
-            await _context.AddRangeAsync(bills)
+            await _context.AddRangeAsync(newBills)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);

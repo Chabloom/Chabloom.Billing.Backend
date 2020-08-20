@@ -7,8 +7,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Chabloom.Payments.Models
 {
-    [Table("PaymentsAccounts")]
-    public class Account
+    [Table("PaymentsTenants")]
+    public class Tenant
     {
         [Required]
         [Key]
@@ -17,22 +17,11 @@ namespace Chabloom.Payments.Models
         [Required]
         public string Name { get; set; }
 
-        [Required]
-        public string ExternalId { get; set; }
+        public List<TenantUser> Users { get; set; }
 
-        [Required]
-        public string PrimaryAddress { get; set; }
+        public List<TenantRole> Roles { get; set; }
 
-        [Required]
-        public Tenant Tenant { get; set; }
-
-        public List<AccountUser> Users { get; set; }
-
-        public List<AccountRole> Roles { get; set; }
-
-        public List<Bill> Bills { get; set; }
-
-        public List<BillSchedule> BillSchedules { get; set; }
+        public List<Account> Accounts { get; set; }
 
         #region Auditing
 

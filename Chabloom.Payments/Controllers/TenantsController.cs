@@ -19,12 +19,12 @@ namespace Chabloom.Payments.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class BillSchedulesController : ControllerBase
+    public class TenantsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<BillSchedulesController> _logger;
+        private readonly ILogger<TenantsController> _logger;
 
-        public BillSchedulesController(ApplicationDbContext context, ILogger<BillSchedulesController> logger)
+        public TenantsController(ApplicationDbContext context, ILogger<TenantsController> logger)
         {
             _context = context;
             _logger = logger;
@@ -34,7 +34,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<BillScheduleViewModel>>> GetBillSchedules()
+        public async Task<ActionResult<IEnumerable<TenantViewModel>>> GetTenants()
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -51,35 +51,26 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Allow query by tenant
-            // TODO: Query tenant for access
-
-            // Find all bill schedules the user has access to
-            var billSchedules = await _context.BillSchedules
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Users.Select(y => y.Id).Contains(userId))
-                .Select(x => new BillScheduleViewModel
+            // Find all tenants the user has access to
+            var tenants = await _context.Tenants
+                .Include(x => x.Users)
+                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
+                .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
-                    Name = x.Name,
-                    Amount = x.Amount,
-                    DayDue = x.DayDue,
-                    Interval = x.Interval,
-                    Enabled = x.Enabled,
-                    Account = x.Account.Id
+                    Name = x.Name
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            return Ok(billSchedules);
+            return Ok(tenants);
         }
 
         [HttpGet("{id}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<BillScheduleViewModel>> GetBillSchedule(Guid id)
+        public async Task<ActionResult<TenantViewModel>> GetTenant(Guid id)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -96,33 +87,25 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
-
-            // Find the specified bill schedule if the user has access to it
-            var account = await _context.BillSchedules
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Users.Select(y => y.Id).Contains(userId))
-                .Select(x => new BillScheduleViewModel
+            // Find the specified tenant if the user has access to it
+            var tenant = await _context.Tenants
+                .Include(x => x.Users)
+                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
+                .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
-                    Name = x.Name,
-                    Amount = x.Amount,
-                    DayDue = x.DayDue,
-                    Interval = x.Interval,
-                    Enabled = x.Enabled,
-                    Account = x.Account.Id
+                    Name = x.Name
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (account == null)
+            if (tenant == null)
             {
                 // Return 404 even if the item exists to prevent leakage of items
-                _logger.LogWarning($"User id {userId} attempted to access unknown bill schedule {id}");
+                _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
                 return NotFound();
             }
 
-            return Ok(account);
+            return Ok(tenant);
         }
 
         [HttpPut("{id}")]
@@ -131,7 +114,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutBillSchedule(Guid id, BillScheduleViewModel viewModel)
+        public async Task<IActionResult> PutTenant(Guid id, TenantViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -158,42 +141,33 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Find the specified bill schedule
-            var billSchedule = await _context.BillSchedules
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                .ThenInclude(x => x.Users)
+            // Find the specified tenant if the user has access to it
+            var tenant = await _context.Tenants
+                .Include(x => x.Users)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (billSchedule == null)
+            if (tenant == null)
             {
                 // Return 404 even if the item exists to prevent leakage of items
-                _logger.LogWarning($"User id {userId} attempted to access unknown bill schedule {id}");
+                _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
                 return NotFound();
             }
 
             // Ensure the current user belongs to the tenant
-            if (!billSchedule.Account.Tenant.Users
+            if (!tenant.Users
                 .Select(x => x.Id)
                 .Contains(userId))
             {
-                _logger.LogWarning($"User id {userId} did not belong to tenant {billSchedule.Account.Tenant.Id}");
+                _logger.LogWarning($"User id {userId} did not belong to tenant {tenant.Id}");
                 return Forbid();
             }
 
-            // Update the bill schedule
-            billSchedule.Name = viewModel.Name;
-            billSchedule.Amount = viewModel.Amount;
-            billSchedule.DayDue = viewModel.DayDue;
-            billSchedule.Interval = viewModel.Interval;
-            billSchedule.Enabled = viewModel.Enabled;
-            billSchedule.Account = await _context.Accounts
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
-                .ConfigureAwait(false);
-            billSchedule.UpdatedUser = sid;
-            billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
+            // Update the tenant
+            tenant.Name = viewModel.Name;
+            tenant.UpdatedUser = sid;
+            tenant.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
-            _context.Update(billSchedule);
+            _context.Update(tenant);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
@@ -205,7 +179,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<BillScheduleViewModel>> PostBillSchedule(BillScheduleViewModel viewModel)
+        public async Task<ActionResult<TenantViewModel>> PostTenant(TenantViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -232,47 +206,31 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Create the new bill schedule
-            var billSchedule = new BillSchedule
+            // Create the new tenant
+            var tenant = new Tenant
             {
                 Name = viewModel.Name,
-                Amount = viewModel.Amount,
-                DayDue = viewModel.DayDue,
-                Interval = viewModel.Interval,
-                Enabled = viewModel.Enabled,
-                Account = await _context.Accounts
-                    .Include(x => x.Tenant)
-                    .ThenInclude(x => x.Users)
-                    .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
-                    .ConfigureAwait(false),
                 CreatedUser = sid,
                 UpdatedUser = sid
             };
 
-            // Ensure the account was found
-            if (billSchedule.Account == null)
-            {
-                _logger.LogWarning($"Specified account {viewModel.Account} could not be found");
-                return BadRequest();
-            }
-
             // Ensure the current user belongs to the tenant
-            if (!billSchedule.Account.Tenant.Users
+            if (!tenant.Users
                 .Select(x => x.Id)
                 .Contains(userId))
             {
-                _logger.LogWarning($"User id {userId} did not belong to tenant {billSchedule.Account.Tenant.Id}");
+                _logger.LogWarning($"User id {userId} did not belong to tenant {tenant.Id}");
                 return Forbid();
             }
 
-            await _context.BillSchedules.AddAsync(billSchedule)
+            await _context.Tenants.AddAsync(tenant)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            viewModel.Id = billSchedule.Id;
+            viewModel.Id = tenant.Id;
 
-            return CreatedAtAction("GetBillSchedule", new {id = viewModel.Id}, viewModel);
+            return CreatedAtAction("GetTenant", new {id = viewModel.Id}, viewModel);
         }
     }
 }

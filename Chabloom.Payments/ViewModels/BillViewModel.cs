@@ -3,9 +3,9 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Payments.Models
+namespace Chabloom.Payments.ViewModels
 {
-    public class BillScheduleViewModel
+    public class BillViewModel
     {
         public Guid Id { get; set; }
 
@@ -16,13 +16,7 @@ namespace Chabloom.Payments.Models
         public decimal Amount { get; set; }
 
         [Required]
-        public int DayDue { get; set; }
-
-        [Required]
-        public int MonthInterval { get; set; }
-
-        [Required]
-        public bool Enabled { get; set; } = true;
+        public DateTime DueDate { get; set; }
 
         public Guid Account { get; set; }
     }

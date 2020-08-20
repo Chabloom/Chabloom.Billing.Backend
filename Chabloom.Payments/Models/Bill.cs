@@ -28,9 +28,7 @@ namespace Chabloom.Payments.Models
         [Required]
         public Account Account { get; set; }
 
-        public BillSchedule BillSchedule { get; set; }
-
-        public List<Transaction> Transactions { get; set; }
+        public List<BillTransaction> BillTransactions { get; set; }
 
         #region Auditing
 

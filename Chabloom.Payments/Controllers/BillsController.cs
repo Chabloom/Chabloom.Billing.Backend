@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Chabloom.Payments.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -35,27 +36,41 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<BillViewModel>>> GetBills()
         {
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
                 return Forbid();
             }
 
-            return await _context.Bills
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // TODO: Allow query by tenant
+            // TODO: Query tenant for access
+
+            // Find all bills the user has access to
+            var bills = await _context.Bills
                 .Include(x => x.Account)
-                .Include(x => x.BillSchedule)
+                .ThenInclude(x => x.Users)
+                .Where(x => x.Account.Users.Select(y => y.Id).Contains(userId))
                 .Select(x => new BillViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     Amount = x.Amount,
                     DueDate = x.DueDate,
-                    Account = x.Account.Id,
-                    BillSchedule = x.BillSchedule.Id
+                    Account = x.Account.Id
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
+
+            return Ok(bills);
         }
 
         [HttpGet("{id}")]
@@ -64,39 +79,46 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<BillViewModel>> GetBill(Guid id)
         {
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
                 return Forbid();
             }
 
-            // Find the specified bill
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // TODO: Query tenant for access
+
+            // Find the specified bill if the user has access to it
             var bill = await _context.Bills
                 .Include(x => x.Account)
-                .Include(x => x.BillSchedule)
+                .ThenInclude(x => x.Users)
+                .Where(x => x.Account.Users.Select(y => y.Id).Contains(userId))
+                .Select(x => new BillViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Amount = x.Amount,
+                    DueDate = x.DueDate,
+                    Account = x.Account.Id
+                })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (bill == null)
             {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown bill {id}");
                 return NotFound();
             }
 
-            // Ensure the user owns the account
-            if (bill.Account.Owner != userId)
-            {
-                return Forbid();
-            }
-
-            return new BillViewModel
-            {
-                Id = bill.Id,
-                Name = bill.Name,
-                Amount = bill.Amount,
-                DueDate = bill.DueDate,
-                Account = bill.Account.Id,
-                BillSchedule = bill.BillSchedule.Id
-            };
+            return Ok(bill);
         }
 
         [HttpPut("{id}")]
@@ -117,39 +139,52 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
             }
 
             // Find the specified bill
             var bill = await _context.Bills
                 .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (bill == null)
             {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown bill {id}");
                 return NotFound();
             }
 
-            // Ensure the user owns the account
-            if (bill.Account.Owner != userId)
+            // Ensure the current user belongs to the tenant
+            if (!bill.Account.Tenant.Users
+                .Select(x => x.Id)
+                .Contains(userId))
             {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {bill.Account.Tenant.Id}");
                 return Forbid();
             }
 
+            // Update the bill
             bill.Name = viewModel.Name;
             bill.Amount = viewModel.Amount;
             bill.DueDate = viewModel.DueDate;
             bill.Account = await _context.Accounts
                 .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                 .ConfigureAwait(false);
-            bill.BillSchedule = await _context.BillSchedules
-                .FirstOrDefaultAsync(x => x.Id == viewModel.BillSchedule)
-                .ConfigureAwait(false);
-            bill.UpdatedUser = userId;
+            bill.UpdatedUser = sid;
             bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(bill);
@@ -176,10 +211,18 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
             }
 
@@ -191,12 +234,25 @@ namespace Chabloom.Payments.Controllers
                 Account = await _context.Accounts
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                     .ConfigureAwait(false),
-                BillSchedule = await _context.BillSchedules
-                    .FirstOrDefaultAsync(x => x.Id == viewModel.BillSchedule)
-                    .ConfigureAwait(false),
-                CreatedUser = userId,
-                UpdatedUser = userId
+                CreatedUser = sid,
+                UpdatedUser = sid
             };
+
+            // Ensure the account was found
+            if (bill.Account == null)
+            {
+                _logger.LogWarning($"Specified account {viewModel.Account} could not be found");
+                return BadRequest();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!bill.Account.Tenant.Users
+                .Select(x => x.Id)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {bill.Account.Tenant.Id}");
+                return Forbid();
+            }
 
             await _context.Bills.AddAsync(bill)
                 .ConfigureAwait(false);

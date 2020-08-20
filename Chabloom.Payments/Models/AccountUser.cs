@@ -7,32 +7,17 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Chabloom.Payments.Models
 {
-    [Table("PaymentsAccounts")]
-    public class Account
+    [Table("PaymentsAccountUsers")]
+    public class AccountUser
     {
         [Required]
         [Key]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
 
         [Required]
-        public string Name { get; set; }
+        public Account Account { get; set; }
 
-        [Required]
-        public string ExternalId { get; set; }
-
-        [Required]
-        public string PrimaryAddress { get; set; }
-
-        [Required]
-        public Tenant Tenant { get; set; }
-
-        public List<AccountUser> Users { get; set; }
-
-        public List<AccountRole> Roles { get; set; }
-
-        public List<Bill> Bills { get; set; }
-
-        public List<BillSchedule> BillSchedules { get; set; }
+        public List<AccountUserRole> UserRoles { get; set; }
 
         #region Auditing
 

@@ -14,10 +14,24 @@ namespace Chabloom.Payments.Data
 
         public DbSet<Account> Accounts { get; set; }
 
+        public DbSet<AccountRole> AccountRoles { get; set; }
+
+        public DbSet<AccountUser> AccountUsers { get; set; }
+
+        public DbSet<AccountUserRole> AccountUserRoles { get; set; }
+
         public DbSet<Bill> Bills { get; set; }
 
         public DbSet<BillSchedule> BillSchedules { get; set; }
 
-        public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<BillTransaction> BillTransactions { get; set; }
+
+        public DbSet<Tenant> Tenants { get; set; }
+
+        public DbSet<TenantRole> TenantRoles { get; set; }
+
+        public DbSet<TenantUser> TenantUsers { get; set; }
+
+        public DbSet<TenantUserRole> TenantUserRoles { get; set; }
     }
 }

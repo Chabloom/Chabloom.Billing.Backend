@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Chabloom.Payments.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -35,25 +36,41 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
         {
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
                 return Forbid();
             }
 
-            return await _context.Accounts
-                .Where(x => x.Owner == userId)
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // TODO: Allow query by tenant
+            // TODO: Query tenant for access
+
+            // Find all accounts the user has access to
+            var accounts = await _context.Accounts
+                .Include(x => x.Tenant)
+                .Include(x => x.Users)
+                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
-                    PrimaryAddress = x.PrimaryAddress,
                     ExternalId = x.ExternalId,
-                    Owner = x.Owner
+                    PrimaryAddress = x.PrimaryAddress,
+                    Tenant = x.Tenant.Id
                 })
                 .ToListAsync()
                 .ConfigureAwait(false);
+
+            return Ok(accounts);
         }
 
         [HttpGet("{id}")]
@@ -62,36 +79,46 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
                 return Forbid();
             }
 
-            // Find the specified account
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // TODO: Query tenant for access
+
+            // Find the specified account if the user has access to it
             var account = await _context.Accounts
+                .Include(x => x.Tenant)
+                .Include(x => x.Users)
+                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
+                .Select(x => new AccountViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    ExternalId = x.ExternalId,
+                    PrimaryAddress = x.PrimaryAddress,
+                    Tenant = x.Tenant.Id
+                })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (account == null)
             {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
                 return NotFound();
             }
 
-            // Ensure the user owns the account
-            if (account.Owner != userId)
-            {
-                return Forbid();
-            }
-
-            return new AccountViewModel
-            {
-                Id = account.Id,
-                Name = account.Name,
-                PrimaryAddress = account.PrimaryAddress,
-                ExternalId = account.ExternalId,
-                Owner = account.Owner
-            };
+            return Ok(account);
         }
 
         [HttpPut("{id}")]
@@ -112,34 +139,47 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
                 return Forbid();
             }
 
-            // Find the specified account
-            var account = await _context
-                .Accounts
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Find the specified account if the user has access to it
+            var account = await _context.Accounts
+                .Include(x => x.Tenant)
+                .ThenInclude(x => x.Users)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (account == null)
             {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
                 return NotFound();
             }
 
-            // Ensure the user owns the account
-            if (account.Owner != userId)
+            // Ensure the current user belongs to the tenant
+            if (!account.Tenant.Users
+                .Select(x => x.Id)
+                .Contains(userId))
             {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {account.Tenant.Id}");
                 return Forbid();
             }
 
+            // Update the account
             account.Name = viewModel.Name;
             account.PrimaryAddress = viewModel.PrimaryAddress;
-            account.ExternalId = viewModel.ExternalId;
-            account.Owner = viewModel.Owner;
-            account.UpdatedUser = userId;
+            account.UpdatedUser = sid;
             account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
@@ -166,22 +206,50 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // Get the current user
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(userId))
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
             {
+                _logger.LogWarning("User attempted call without an sid");
                 return Forbid();
             }
 
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Create the new account
             var account = new Account
             {
                 Name = viewModel.Name,
-                PrimaryAddress = viewModel.PrimaryAddress,
                 ExternalId = viewModel.ExternalId,
-                Owner = viewModel.Owner,
-                CreatedUser = userId,
-                UpdatedUser = userId
+                PrimaryAddress = viewModel.PrimaryAddress,
+                Tenant = await _context.Tenants
+                    .Include(x => x.Users)
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.Tenant)
+                    .ConfigureAwait(false),
+                CreatedUser = sid,
+                UpdatedUser = sid
             };
+
+            // Ensure the tenant was found
+            if (account.Tenant == null)
+            {
+                _logger.LogWarning($"Specified tenant {viewModel.Tenant} could not be found");
+                return BadRequest();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!account.Tenant.Users
+                .Select(x => x.Id)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {account.Tenant.Id}");
+                return Forbid();
+            }
 
             await _context.Accounts.AddAsync(account)
                 .ConfigureAwait(false);

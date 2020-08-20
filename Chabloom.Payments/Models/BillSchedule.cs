@@ -1,7 +1,6 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -25,15 +24,13 @@ namespace Chabloom.Payments.Models
         public int DayDue { get; set; }
 
         [Required]
-        public int MonthInterval { get; set; }
+        public int Interval { get; set; }
 
         [Required]
         public bool Enabled { get; set; } = true;
 
         [Required]
         public Account Account { get; set; }
-
-        public List<Bill> Bills { get; set; }
 
         #region Auditing
 
