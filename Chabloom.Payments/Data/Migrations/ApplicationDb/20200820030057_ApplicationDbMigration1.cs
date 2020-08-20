@@ -195,8 +195,8 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                 columns: table => new
                 {
                     Id = table.Column<Guid>(nullable: false),
-                    UserId = table.Column<Guid>(nullable: false),
-                    RoleId = table.Column<Guid>(nullable: false),
+                    UserId = table.Column<Guid>(nullable: true),
+                    RoleId = table.Column<Guid>(nullable: true),
                     CreatedUser = table.Column<string>(nullable: false),
                     CreatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
                     UpdatedUser = table.Column<string>(nullable: false),
@@ -210,13 +210,13 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         column: x => x.RoleId,
                         principalTable: "PaymentsTenantRoles",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_PaymentsTenantUserRoles_PaymentsTenantUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "PaymentsTenantUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -224,8 +224,8 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                 columns: table => new
                 {
                     Id = table.Column<Guid>(nullable: false),
-                    UserId = table.Column<Guid>(nullable: false),
-                    RoleId = table.Column<Guid>(nullable: false),
+                    UserId = table.Column<Guid>(nullable: true),
+                    RoleId = table.Column<Guid>(nullable: true),
                     CreatedUser = table.Column<string>(nullable: false),
                     CreatedTimestamp = table.Column<DateTimeOffset>(nullable: false),
                     UpdatedUser = table.Column<string>(nullable: false),
@@ -239,13 +239,13 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         column: x => x.RoleId,
                         principalTable: "PaymentsAccountRoles",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_PaymentsAccountUserRoles_PaymentsAccountUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "PaymentsAccountUsers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(

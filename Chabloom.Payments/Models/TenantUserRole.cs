@@ -13,10 +13,8 @@ namespace Chabloom.Payments.Models
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Required]
         public TenantUser User { get; set; }
 
-        [Required]
         public TenantRole Role { get; set; }
 
         #region Auditing

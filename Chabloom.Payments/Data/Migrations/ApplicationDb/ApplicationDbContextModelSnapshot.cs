@@ -138,7 +138,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("RoleId")
+                    b.Property<Guid?>("RoleId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("UpdatedTimestamp")
@@ -148,7 +148,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -393,7 +393,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("RoleId")
+                    b.Property<Guid?>("RoleId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("UpdatedTimestamp")
@@ -403,7 +403,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -446,15 +446,11 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                 {
                     b.HasOne("Chabloom.Payments.Models.AccountRole", "Role")
                         .WithMany("UserRoles")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("RoleId");
 
                     b.HasOne("Chabloom.Payments.Models.AccountUser", "User")
                         .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.Bill", b =>
@@ -506,15 +502,11 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                 {
                     b.HasOne("Chabloom.Payments.Models.TenantRole", "Role")
                         .WithMany("UserRoles")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("RoleId");
 
                     b.HasOne("Chabloom.Payments.Models.TenantUser", "User")
                         .WithMany("UserRoles")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
                 });
 #pragma warning restore 612, 618
         }
