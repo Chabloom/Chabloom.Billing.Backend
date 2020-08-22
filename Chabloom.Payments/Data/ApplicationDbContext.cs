@@ -18,8 +18,6 @@ namespace Chabloom.Payments.Data
 
         public DbSet<AccountUser> AccountUsers { get; set; }
 
-        public DbSet<AccountUserRole> AccountUserRoles { get; set; }
-
         public DbSet<Bill> Bills { get; set; }
 
         public DbSet<BillSchedule> BillSchedules { get; set; }
@@ -32,6 +30,15 @@ namespace Chabloom.Payments.Data
 
         public DbSet<TenantUser> TenantUsers { get; set; }
 
-        public DbSet<TenantUserRole> TenantUserRoles { get; set; }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AccountUser>()
+                .HasKey(x => new {x.UserId, x.AccountId});
+
+            modelBuilder.Entity<TenantUser>()
+                .HasKey(x => new {x.UserId, x.TenantId});
+        }
     }
 }

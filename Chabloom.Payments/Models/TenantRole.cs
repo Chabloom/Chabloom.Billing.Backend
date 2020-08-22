@@ -20,8 +20,6 @@ namespace Chabloom.Payments.Models
         [Required]
         public Tenant Tenant { get; set; }
 
-        public List<TenantUserRole> UserRoles { get; set; }
-
         #region Auditing
 
         [Required]

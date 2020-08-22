@@ -58,7 +58,7 @@ namespace Chabloom.Payments.Controllers
             var billSchedules = await _context.BillSchedules
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new BillScheduleViewModel
                 {
                     Id = x.Id,
@@ -102,7 +102,7 @@ namespace Chabloom.Payments.Controllers
             var account = await _context.BillSchedules
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new BillScheduleViewModel
                 {
                     Id = x.Id,
@@ -174,7 +174,7 @@ namespace Chabloom.Payments.Controllers
 
             // Ensure the current user belongs to the tenant
             if (!billSchedule.Account.Tenant.Users
-                .Select(x => x.Id)
+                .Select(x => x.UserId)
                 .Contains(userId))
             {
                 _logger.LogWarning($"User id {userId} did not belong to tenant {billSchedule.Account.Tenant.Id}");
@@ -258,7 +258,7 @@ namespace Chabloom.Payments.Controllers
 
             // Ensure the current user belongs to the tenant
             if (!billSchedule.Account.Tenant.Users
-                .Select(x => x.Id)
+                .Select(x => x.UserId)
                 .Contains(userId))
             {
                 _logger.LogWarning($"User id {userId} did not belong to tenant {billSchedule.Account.Tenant.Id}");

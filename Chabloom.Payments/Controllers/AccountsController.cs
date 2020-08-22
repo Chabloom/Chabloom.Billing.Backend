@@ -58,7 +58,7 @@ namespace Chabloom.Payments.Controllers
             var accounts = await _context.Accounts
                 .Include(x => x.Tenant)
                 .Include(x => x.Users)
-                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
@@ -100,7 +100,7 @@ namespace Chabloom.Payments.Controllers
             var account = await _context.Accounts
                 .Include(x => x.Tenant)
                 .Include(x => x.Users)
-                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
@@ -169,7 +169,7 @@ namespace Chabloom.Payments.Controllers
 
             // Ensure the current user belongs to the tenant
             if (!account.Tenant.Users
-                .Select(x => x.Id)
+                .Select(x => x.UserId)
                 .Contains(userId))
             {
                 _logger.LogWarning($"User id {userId} did not belong to tenant {account.Tenant.Id}");
@@ -244,14 +244,30 @@ namespace Chabloom.Payments.Controllers
 
             // Ensure the current user belongs to the tenant
             if (!account.Tenant.Users
-                .Select(x => x.Id)
+                .Select(x => x.UserId)
                 .Contains(userId))
             {
                 _logger.LogWarning($"User id {userId} did not belong to tenant {account.Tenant.Id}");
                 return Forbid();
             }
 
+            // TODO: Ensure the user is able to create accounts
+
             await _context.Accounts.AddAsync(account)
+                .ConfigureAwait(false);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            // Add the user to the new account
+            var accountUser = new AccountUser
+            {
+                UserId = userId,
+                Account = account,
+                CreatedUser = sid,
+                UpdatedUser = sid
+            };
+
+            await _context.AccountUsers.AddAsync(accountUser)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);

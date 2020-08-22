@@ -11,13 +11,11 @@ namespace Chabloom.Payments.Models
     public class TenantUser
     {
         [Required]
-        [Key]
-        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
 
         [Required]
+        public Guid TenantId { get; set; }
         public Tenant Tenant { get; set; }
-
-        public List<TenantUserRole> UserRoles { get; set; }
 
         #region Auditing
 

@@ -59,7 +59,7 @@ namespace Chabloom.Payments.Controllers
                 .Include(x => x.Bill)
                 .ThenInclude(x => x.Account)
                 .ThenInclude(x => x.Users)
-                .Where(x => x.Bill.Account.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new BillTransactionViewModel
                 {
                     Id = x.Id,
@@ -102,7 +102,7 @@ namespace Chabloom.Payments.Controllers
                 .Include(x => x.Bill)
                 .ThenInclude(x => x.Account)
                 .ThenInclude(x => x.Users)
-                .Where(x => x.Bill.Account.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new BillTransactionViewModel
                 {
                     Id = x.Id,

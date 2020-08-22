@@ -20,8 +20,6 @@ namespace Chabloom.Payments.Models
         [Required]
         public Account Account { get; set; }
 
-        public List<AccountUserRole> UserRoles { get; set; }
-
         #region Auditing
 
         [Required]

@@ -11,13 +11,11 @@ namespace Chabloom.Payments.Models
     public class AccountUser
     {
         [Required]
-        [Key]
-        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
 
         [Required]
+        public Guid AccountId { get; set; }
         public Account Account { get; set; }
-
-        public List<AccountUserRole> UserRoles { get; set; }
 
         #region Auditing
 

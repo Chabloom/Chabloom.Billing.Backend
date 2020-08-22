@@ -54,7 +54,7 @@ namespace Chabloom.Payments.Controllers
             // Find all tenants the user has access to
             var tenants = await _context.Tenants
                 .Include(x => x.Users)
-                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
@@ -90,7 +90,7 @@ namespace Chabloom.Payments.Controllers
             // Find the specified tenant if the user has access to it
             var tenant = await _context.Tenants
                 .Include(x => x.Users)
-                .Where(x => x.Users.Select(y => y.Id).Contains(userId))
+                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
                 .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
@@ -155,7 +155,7 @@ namespace Chabloom.Payments.Controllers
 
             // Ensure the current user belongs to the tenant
             if (!tenant.Users
-                .Select(x => x.Id)
+                .Select(x => x.UserId)
                 .Contains(userId))
             {
                 _logger.LogWarning($"User id {userId} did not belong to tenant {tenant.Id}");
@@ -214,16 +214,23 @@ namespace Chabloom.Payments.Controllers
                 UpdatedUser = sid
             };
 
-            // Ensure the current user belongs to the tenant
-            if (!tenant.Users
-                .Select(x => x.Id)
-                .Contains(userId))
-            {
-                _logger.LogWarning($"User id {userId} did not belong to tenant {tenant.Id}");
-                return Forbid();
-            }
+            // TODO: Ensure the user is able to create tenants
 
             await _context.Tenants.AddAsync(tenant)
+                .ConfigureAwait(false);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            // Add the user to the new tenant
+            var tenantUser = new TenantUser
+            {
+                UserId = userId,
+                Tenant = tenant,
+                CreatedUser = sid,
+                UpdatedUser = sid
+            };
+
+            await _context.TenantUsers.AddAsync(tenantUser)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
