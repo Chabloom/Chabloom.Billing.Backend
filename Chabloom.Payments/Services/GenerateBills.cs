@@ -39,6 +39,7 @@ namespace Chabloom.Payments.Services
                     Amount = schedule.Amount,
                     DueDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, schedule.DayDue),
                     Account = schedule.Account,
+                    Schedule = schedule,
                     CreatedUser = Guid.Empty,
                     UpdatedUser = Guid.Empty,
                     DisabledUser = Guid.Empty
