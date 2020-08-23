@@ -34,7 +34,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts()
+        public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts(Guid? tenantId)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -51,24 +51,46 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Allow query by tenant
             // TODO: Query tenant for access
 
-            // Find all accounts the user has access to
-            var accounts = await _context.Accounts
-                .Include(x => x.Tenant)
-                .Include(x => x.Users)
-                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
-                .Select(x => new AccountViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    ExternalId = x.ExternalId,
-                    PrimaryAddress = x.PrimaryAddress,
-                    Tenant = x.Tenant.Id
-                })
-                .ToListAsync()
-                .ConfigureAwait(false);
+            List<AccountViewModel> accounts;
+            if (tenantId == null)
+            {
+                // Find all accounts the user has access to
+                accounts = await _context.Accounts
+                    .Include(x => x.Tenant)
+                    .Include(x => x.Users)
+                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                    .Select(x => new AccountViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        ExternalId = x.ExternalId,
+                        PrimaryAddress = x.PrimaryAddress,
+                        Tenant = x.Tenant.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // Find all accounts the user has access to
+                accounts = await _context.Accounts
+                    .Include(x => x.Tenant)
+                    .Include(x => x.Users)
+                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => x.Tenant.Id == tenantId)
+                    .Select(x => new AccountViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        ExternalId = x.ExternalId,
+                        PrimaryAddress = x.PrimaryAddress,
+                        Tenant = x.Tenant.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
 
             return Ok(accounts);
         }

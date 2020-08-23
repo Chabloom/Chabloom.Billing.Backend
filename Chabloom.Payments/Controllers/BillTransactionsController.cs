@@ -34,7 +34,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<BillTransactionViewModel>>> GetBillTransactions()
+        public async Task<ActionResult<IEnumerable<BillTransactionViewModel>>> GetBillTransactions(Guid? tenantId)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -51,25 +51,51 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Allow query by tenant
             // TODO: Query tenant for access
 
-            // Find all bill transactions the user has access to
-            var billTransactions = await _context.BillTransactions
-                .Include(x => x.Bill)
-                .ThenInclude(x => x.Account)
-                .ThenInclude(x => x.Users)
-                .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
-                .Select(x => new BillTransactionViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    ExternalId = x.ExternalId,
-                    Amount = x.Amount,
-                    Bill = x.Bill.Id
-                })
-                .ToListAsync()
-                .ConfigureAwait(false);
+            List<BillTransactionViewModel> billTransactions;
+            if (tenantId == null)
+            {
+                // Find all bill transactions the user has access to
+                billTransactions = await _context.BillTransactions
+                    .Include(x => x.Bill)
+                    .ThenInclude(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .Include(x => x.Bill)
+                    .ThenInclude(x => x.Account)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => x.Bill.Account.Tenant.Id == tenantId)
+                    .Select(x => new BillTransactionViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        ExternalId = x.ExternalId,
+                        Amount = x.Amount,
+                        Bill = x.Bill.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // Find all bill transactions the user has access to
+                billTransactions = await _context.BillTransactions
+                    .Include(x => x.Bill)
+                    .ThenInclude(x => x.Account)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Select(x => new BillTransactionViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        ExternalId = x.ExternalId,
+                        Amount = x.Amount,
+                        Bill = x.Bill.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
 
             return Ok(billTransactions);
         }

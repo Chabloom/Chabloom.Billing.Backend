@@ -34,7 +34,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<BillScheduleViewModel>>> GetBillSchedules()
+        public async Task<ActionResult<IEnumerable<BillScheduleViewModel>>> GetBillSchedules(Guid? tenantId)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -51,26 +51,52 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Allow query by tenant
             // TODO: Query tenant for access
 
-            // Find all bill schedules the user has access to
-            var billSchedules = await _context.BillSchedules
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                .Select(x => new BillScheduleViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Amount = x.Amount,
-                    DayDue = x.DayDue,
-                    Interval = x.Interval,
-                    Enabled = x.Enabled,
-                    Account = x.Account.Id
-                })
-                .ToListAsync()
-                .ConfigureAwait(false);
+            List<BillScheduleViewModel> billSchedules;
+            if (tenantId == null)
+            {
+                // Find all bill schedules the user has access to
+                billSchedules = await _context.BillSchedules
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => x.Account.Tenant.Id == tenantId)
+                    .Select(x => new BillScheduleViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        Amount = x.Amount,
+                        DayDue = x.DayDue,
+                        Interval = x.Interval,
+                        Enabled = x.Enabled,
+                        Account = x.Account.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // Find all bill schedules the user has access to
+                billSchedules = await _context.BillSchedules
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Select(x => new BillScheduleViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        Amount = x.Amount,
+                        DayDue = x.DayDue,
+                        Interval = x.Interval,
+                        Enabled = x.Enabled,
+                        Account = x.Account.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
 
             return Ok(billSchedules);
         }
