@@ -16,10 +16,6 @@ namespace Chabloom.Payments.Models
         [Required]
         public Guid UserId { get; set; }
 
-        [Required]
-        public Account Account { get; set; }
-
-        [Required]
         public ApplicationRole Role { get; set; }
 
         #region Auditing
