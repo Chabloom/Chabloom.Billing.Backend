@@ -28,7 +28,7 @@ namespace Chabloom.Payments.Models
 
         public List<Bill> Bills { get; set; }
 
-        public List<BillSchedule> BillSchedules { get; set; }
+        public List<Schedule> Schedules { get; set; }
 
         public List<AccountUser> Users { get; set; }
 
