@@ -24,7 +24,7 @@ namespace Chabloom.Payments.Services
             var billSchedules = await _context.BillSchedules
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Bills)
-                .Where(x => x.Enabled)
+                .Where(x => !x.Disabled)
                 .ToListAsync()
                 .ConfigureAwait(false);
 
@@ -39,8 +39,9 @@ namespace Chabloom.Payments.Services
                     Amount = billSchedule.Amount,
                     DueDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, billSchedule.DayDue),
                     Account = billSchedule.Account,
-                    CreatedUser = "GenerateBills",
-                    UpdatedUser = "GenerateBills"
+                    CreatedUser = Guid.Empty,
+                    UpdatedUser = Guid.Empty,
+                    DisabledUser = Guid.Empty
                 }).ToList();
 
             // Add the bills to the database

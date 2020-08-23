@@ -61,6 +61,7 @@ namespace Chabloom.Payments.Controllers
                     .Include(x => x.Tenant)
                     .Include(x => x.Users)
                     .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
                     .Select(x => new AccountViewModel
                     {
                         Id = x.Id,
@@ -79,6 +80,7 @@ namespace Chabloom.Payments.Controllers
                     .Include(x => x.Tenant)
                     .Include(x => x.Users)
                     .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
                     .Where(x => x.Tenant.Id == tenantId)
                     .Select(x => new AccountViewModel
                     {
@@ -123,6 +125,7 @@ namespace Chabloom.Payments.Controllers
                 .Include(x => x.Tenant)
                 .Include(x => x.Users)
                 .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                .Where(x => !x.Disabled)
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
@@ -180,6 +183,8 @@ namespace Chabloom.Payments.Controllers
             var account = await _context.Accounts
                 .Include(x => x.Tenant)
                 .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (account == null)
@@ -198,10 +203,21 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to update account for tenant {account.Tenant.Id}");
+                return Forbid();
+            }
+
             // Update the account
             account.Name = viewModel.Name;
             account.PrimaryAddress = viewModel.PrimaryAddress;
-            account.UpdatedUser = sid;
+            account.UpdatedUser = userId;
             account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
@@ -251,10 +267,12 @@ namespace Chabloom.Payments.Controllers
                 PrimaryAddress = viewModel.PrimaryAddress,
                 Tenant = await _context.Tenants
                     .Include(x => x.Users)
+                    .ThenInclude(x => x.Role)
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Tenant)
                     .ConfigureAwait(false),
-                CreatedUser = sid,
-                UpdatedUser = sid
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
             };
 
             // Ensure the tenant was found
@@ -273,20 +291,68 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Ensure the user is able to create accounts
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to create account for tenant {account.Tenant.Id}");
+                return Forbid();
+            }
 
             await _context.Accounts.AddAsync(account)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            // Add the user to the new account
+            // Create the account roles
+            var roles = new List<AccountRole>
+            {
+                new AccountRole
+                {
+                    Name = "Admin",
+                    Account = account,
+                    CreatedUser = userId,
+                    UpdatedUser = userId,
+                    DisabledUser = userId
+                },
+                new AccountRole
+                {
+                    Name = "Manager",
+                    Account = account,
+                    CreatedUser = userId,
+                    UpdatedUser = userId,
+                    DisabledUser = userId
+                },
+                new AccountRole
+                {
+                    Name = "Basic",
+                    Account = account,
+                    CreatedUser = userId,
+                    UpdatedUser = userId,
+                    DisabledUser = userId
+                }
+            };
+
+            await _context.AddRangeAsync(roles)
+                .ConfigureAwait(false);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            // Add the user to the new account as an admin
             var accountUser = new AccountUser
             {
                 UserId = userId,
                 Account = account,
-                CreatedUser = sid,
-                UpdatedUser = sid
+                Role = await _context.AccountRoles
+                    .Where(x => x.Account == account)
+                    .FirstOrDefaultAsync(x => x.Name == "Admin")
+                    .ConfigureAwait(false),
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
             };
 
             await _context.AccountUsers.AddAsync(accountUser)
@@ -297,6 +363,75 @@ namespace Chabloom.Payments.Controllers
             viewModel.Id = account.Id;
 
             return CreatedAtAction("GetAccount", new {id = viewModel.Id}, viewModel);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> DeleteAccount(Guid id)
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Find the specified account if the user has access to it
+            var account = await _context.Accounts
+                .Include(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (account == null)
+            {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
+                return NotFound();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!account.Tenant.Users
+                .Select(x => x.UserId)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to disable account for tenant {account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Disable the account
+            account.Disabled = true;
+            account.DisabledUser = userId;
+            account.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(account);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            return NoContent();
         }
     }
 }

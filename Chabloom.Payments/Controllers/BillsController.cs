@@ -59,11 +59,9 @@ namespace Chabloom.Payments.Controllers
                 // Find all bills the user has access to
                 bills = await _context.Bills
                     .Include(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => x.Account.Tenant.Id == tenantId)
+                    .Where(x => !x.Disabled)
                     .Select(x => new BillViewModel
                     {
                         Id = x.Id,
@@ -80,8 +78,12 @@ namespace Chabloom.Payments.Controllers
                 // Find all bills the user has access to
                 bills = await _context.Bills
                     .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .Include(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
+                    .Where(x => x.Account.Tenant.Id == tenantId)
                     .Select(x => new BillViewModel
                     {
                         Id = x.Id,
@@ -125,6 +127,7 @@ namespace Chabloom.Payments.Controllers
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Users)
                 .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                .Where(x => !x.Disabled)
                 .Select(x => new BillViewModel
                 {
                     Id = x.Id,
@@ -183,6 +186,8 @@ namespace Chabloom.Payments.Controllers
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Tenant)
                 .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (bill == null)
@@ -201,14 +206,22 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = bill.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to update bill for tenant {bill.Account.Tenant.Id}");
+                return Forbid();
+            }
+
             // Update the bill
             bill.Name = viewModel.Name;
             bill.Amount = viewModel.Amount;
             bill.DueDate = viewModel.DueDate;
-            bill.Account = await _context.Accounts
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
-                .ConfigureAwait(false);
-            bill.UpdatedUser = sid;
+            bill.UpdatedUser = userId;
             bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(bill);
@@ -256,10 +269,14 @@ namespace Chabloom.Payments.Controllers
                 Amount = viewModel.Amount,
                 DueDate = viewModel.DueDate,
                 Account = await _context.Accounts
+                    .Include(x => x.Tenant)
+                    .ThenInclude(x => x.Users)
+                    .ThenInclude(x => x.Role)
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                     .ConfigureAwait(false),
-                CreatedUser = sid,
-                UpdatedUser = sid
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
             };
 
             // Ensure the account was found
@@ -278,6 +295,17 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = bill.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to create bill for tenant {bill.Account.Tenant.Id}");
+                return Forbid();
+            }
+
             await _context.Bills.AddAsync(bill)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
@@ -286,6 +314,76 @@ namespace Chabloom.Payments.Controllers
             viewModel.Id = bill.Id;
 
             return CreatedAtAction("GetBill", new {id = viewModel.Id}, viewModel);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> DeleteBill(Guid id)
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Find the specified bill
+            var bill = await _context.Bills
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (bill == null)
+            {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown bill {id}");
+                return NotFound();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!bill.Account.Tenant.Users
+                .Select(x => x.UserId)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {bill.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = bill.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to disable bill for tenant {bill.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Disable the bill
+            bill.Disabled = true;
+            bill.DisabledUser = userId;
+            bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(bill);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            return NoContent();
         }
     }
 }

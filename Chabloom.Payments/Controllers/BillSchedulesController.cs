@@ -59,11 +59,9 @@ namespace Chabloom.Payments.Controllers
                 // Find all bill schedules the user has access to
                 billSchedules = await _context.BillSchedules
                     .Include(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => x.Account.Tenant.Id == tenantId)
+                    .Where(x => !x.Disabled)
                     .Select(x => new BillScheduleViewModel
                     {
                         Id = x.Id,
@@ -71,7 +69,6 @@ namespace Chabloom.Payments.Controllers
                         Amount = x.Amount,
                         DayDue = x.DayDue,
                         Interval = x.Interval,
-                        Enabled = x.Enabled,
                         Account = x.Account.Id
                     })
                     .ToListAsync()
@@ -82,8 +79,12 @@ namespace Chabloom.Payments.Controllers
                 // Find all bill schedules the user has access to
                 billSchedules = await _context.BillSchedules
                     .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .Include(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
+                    .Where(x => x.Account.Tenant.Id == tenantId)
                     .Select(x => new BillScheduleViewModel
                     {
                         Id = x.Id,
@@ -91,7 +92,6 @@ namespace Chabloom.Payments.Controllers
                         Amount = x.Amount,
                         DayDue = x.DayDue,
                         Interval = x.Interval,
-                        Enabled = x.Enabled,
                         Account = x.Account.Id
                     })
                     .ToListAsync()
@@ -129,6 +129,7 @@ namespace Chabloom.Payments.Controllers
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Users)
                 .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                .Where(x => !x.Disabled)
                 .Select(x => new BillScheduleViewModel
                 {
                     Id = x.Id,
@@ -136,7 +137,6 @@ namespace Chabloom.Payments.Controllers
                     Amount = x.Amount,
                     DayDue = x.DayDue,
                     Interval = x.Interval,
-                    Enabled = x.Enabled,
                     Account = x.Account.Id
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
@@ -189,6 +189,8 @@ namespace Chabloom.Payments.Controllers
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Tenant)
                 .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (billSchedule == null)
@@ -207,16 +209,23 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = billSchedule.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to update bill schedule for tenant {billSchedule.Account.Tenant.Id}");
+                return Forbid();
+            }
+
             // Update the bill schedule
             billSchedule.Name = viewModel.Name;
             billSchedule.Amount = viewModel.Amount;
             billSchedule.DayDue = viewModel.DayDue;
             billSchedule.Interval = viewModel.Interval;
-            billSchedule.Enabled = viewModel.Enabled;
-            billSchedule.Account = await _context.Accounts
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
-                .ConfigureAwait(false);
-            billSchedule.UpdatedUser = sid;
+            billSchedule.UpdatedUser = userId;
             billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(billSchedule);
@@ -265,14 +274,14 @@ namespace Chabloom.Payments.Controllers
                 Amount = viewModel.Amount,
                 DayDue = viewModel.DayDue,
                 Interval = viewModel.Interval,
-                Enabled = viewModel.Enabled,
                 Account = await _context.Accounts
                     .Include(x => x.Tenant)
                     .ThenInclude(x => x.Users)
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                     .ConfigureAwait(false),
-                CreatedUser = sid,
-                UpdatedUser = sid
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
             };
 
             // Ensure the account was found
@@ -291,6 +300,17 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = billSchedule.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to create bill schedule for tenant {billSchedule.Account.Tenant.Id}");
+                return Forbid();
+            }
+
             await _context.BillSchedules.AddAsync(billSchedule)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
@@ -299,6 +319,76 @@ namespace Chabloom.Payments.Controllers
             viewModel.Id = billSchedule.Id;
 
             return CreatedAtAction("GetBillSchedule", new {id = viewModel.Id}, viewModel);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> DeleteBillSchedule(Guid id)
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Find the specified bill schedule
+            var billSchedule = await _context.BillSchedules
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (billSchedule == null)
+            {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown bill schedule {id}");
+                return NotFound();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!billSchedule.Account.Tenant.Users
+                .Select(x => x.UserId)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {billSchedule.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = billSchedule.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to disable bill schedule for tenant {billSchedule.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Disable the billSchedule
+            billSchedule.Disabled = true;
+            billSchedule.DisabledUser = userId;
+            billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(billSchedule);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            return NoContent();
         }
     }
 }

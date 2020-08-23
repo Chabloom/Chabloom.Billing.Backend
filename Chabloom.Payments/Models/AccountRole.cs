@@ -20,19 +20,30 @@ namespace Chabloom.Payments.Models
         [Required]
         public Account Account { get; set; }
 
+        public List<AccountUser> Users { get; set; }
+
         #region Auditing
 
         [Required]
-        public string CreatedUser { get; set; }
+        public Guid CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public string UpdatedUser { get; set; }
+        public Guid UpdatedUser { get; set; }
 
         [Required]
         public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
+
+        [Required]
+        public bool Disabled { get; set; } = false;
+
+        [Required]
+        public Guid DisabledUser { get; set; }
+
+        [Required]
+        public DateTimeOffset DisabledTimestamp { get; set; }
 
         #endregion
     }

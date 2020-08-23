@@ -22,9 +22,6 @@ namespace Chabloom.Payments.ViewModels
         public int Interval { get; set; }
 
         [Required]
-        public bool Enabled { get; set; } = true;
-
-        [Required]
         public Guid Account { get; set; }
     }
 }

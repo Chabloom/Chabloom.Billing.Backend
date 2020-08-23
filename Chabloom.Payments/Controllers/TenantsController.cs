@@ -55,6 +55,7 @@ namespace Chabloom.Payments.Controllers
             var tenants = await _context.Tenants
                 .Include(x => x.Users)
                 .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                .Where(x => !x.Disabled)
                 .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
@@ -91,6 +92,7 @@ namespace Chabloom.Payments.Controllers
             var tenant = await _context.Tenants
                 .Include(x => x.Users)
                 .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                .Where(x => !x.Disabled)
                 .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
@@ -144,6 +146,7 @@ namespace Chabloom.Payments.Controllers
             // Find the specified tenant if the user has access to it
             var tenant = await _context.Tenants
                 .Include(x => x.Users)
+                .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (tenant == null)
@@ -164,7 +167,7 @@ namespace Chabloom.Payments.Controllers
 
             // Update the tenant
             tenant.Name = viewModel.Name;
-            tenant.UpdatedUser = sid;
+            tenant.UpdatedUser = userId;
             tenant.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(tenant);
@@ -210,24 +213,74 @@ namespace Chabloom.Payments.Controllers
             var tenant = new Tenant
             {
                 Name = viewModel.Name,
-                CreatedUser = sid,
-                UpdatedUser = sid
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
             };
 
-            // TODO: Ensure the user is able to create tenants
+            // Ensure the current user can create tenants
+            var applicationUser = _context.ApplicationUsers
+                .Include(x => x.Role)
+                .FirstOrDefault(x => x.UserId == userId);
+            if (applicationUser != null &&
+                applicationUser.Role.Name != "Admin" &&
+                applicationUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to create tenants");
+                return Forbid();
+            }
 
             await _context.Tenants.AddAsync(tenant)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            // Add the user to the new tenant
+            // Create the tenant roles
+            var roles = new List<TenantRole>
+            {
+                new TenantRole
+                {
+                    Name = "Admin", 
+                    Tenant = tenant,
+                    CreatedUser = userId,
+                    UpdatedUser = userId,
+                    DisabledUser = userId
+                },
+                new TenantRole
+                {
+                    Name = "Manager", 
+                    Tenant = tenant,
+                    CreatedUser = userId,
+                    UpdatedUser = userId,
+                    DisabledUser = userId
+                },
+                new TenantRole
+                {
+                    Name = "Basic", 
+                    Tenant = tenant,
+                    CreatedUser = userId,
+                    UpdatedUser = userId,
+                    DisabledUser = userId
+                }
+            };
+
+            await _context.AddRangeAsync(roles)
+                .ConfigureAwait(false);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            // Add the user to the new tenant as an admin
             var tenantUser = new TenantUser
             {
                 UserId = userId,
                 Tenant = tenant,
-                CreatedUser = sid,
-                UpdatedUser = sid
+                Role = await _context.TenantRoles
+                    .Where(x => x.Tenant == tenant)
+                    .FirstOrDefaultAsync(x => x.Name == "Admin")
+                    .ConfigureAwait(false),
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
             };
 
             await _context.TenantUsers.AddAsync(tenantUser)

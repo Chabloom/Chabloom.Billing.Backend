@@ -60,12 +60,9 @@ namespace Chabloom.Payments.Controllers
                 billTransactions = await _context.BillTransactions
                     .Include(x => x.Bill)
                     .ThenInclude(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Bill)
-                    .ThenInclude(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => x.Bill.Account.Tenant.Id == tenantId)
+                    .Where(x => !x.Disabled)
                     .Select(x => new BillTransactionViewModel
                     {
                         Id = x.Id,
@@ -83,8 +80,13 @@ namespace Chabloom.Payments.Controllers
                 billTransactions = await _context.BillTransactions
                     .Include(x => x.Bill)
                     .ThenInclude(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .Include(x => x.Bill)
+                    .ThenInclude(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
+                    .Where(x => x.Bill.Account.Tenant.Id == tenantId)
                     .Select(x => new BillTransactionViewModel
                     {
                         Id = x.Id,
@@ -129,6 +131,7 @@ namespace Chabloom.Payments.Controllers
                 .ThenInclude(x => x.Account)
                 .ThenInclude(x => x.Users)
                 .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
+                .Where(x => !x.Disabled)
                 .Select(x => new BillTransactionViewModel
                 {
                     Id = x.Id,
@@ -176,7 +179,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out _))
+            if (!Guid.TryParse(sid, out var userId))
             {
                 _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
@@ -189,10 +192,15 @@ namespace Chabloom.Payments.Controllers
                 ExternalId = viewModel.ExternalId,
                 Amount = viewModel.Amount,
                 Bill = await _context.Bills
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .ThenInclude(x => x.Users)
+                    .ThenInclude(x => x.Role)
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Bill)
                     .ConfigureAwait(false),
-                CreatedUser = sid,
-                UpdatedUser = sid
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
             };
 
             // Ensure the bill was found
@@ -202,7 +210,25 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // TODO: Verify the user can write the transaction
+            // Ensure the current user belongs to the tenant
+            if (!billTransaction.Bill.Account.Tenant.Users
+                .Select(x => x.UserId)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {billTransaction.Bill.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = billTransaction.Bill.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to create bill transaction for tenant {billTransaction.Bill.Account.Tenant.Id}");
+                return Forbid();
+            }
 
             await _context.BillTransactions.AddAsync(billTransaction)
                 .ConfigureAwait(false);

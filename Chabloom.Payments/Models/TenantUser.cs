@@ -1,7 +1,6 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -11,25 +10,40 @@ namespace Chabloom.Payments.Models
     public class TenantUser
     {
         [Required]
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
         public Guid UserId { get; set; }
 
         [Required]
-        public Guid TenantId { get; set; }
         public Tenant Tenant { get; set; }
+
+        [Required]
+        public TenantRole Role { get; set; }
 
         #region Auditing
 
         [Required]
-        public string CreatedUser { get; set; }
+        public Guid CreatedUser { get; set; }
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public string UpdatedUser { get; set; }
+        public Guid UpdatedUser { get; set; }
 
         [Required]
         public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
+
+        [Required]
+        public bool Disabled { get; set; } = false;
+
+        [Required]
+        public Guid DisabledUser { get; set; }
+
+        [Required]
+        public DateTimeOffset DisabledTimestamp { get; set; }
 
         #endregion
     }
