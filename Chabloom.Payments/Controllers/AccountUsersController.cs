@@ -1,0 +1,402 @@
+﻿// Copyright 2020 Chabloom LC. All rights reserved.
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Chabloom.Payments.Data;
+using Chabloom.Payments.Models;
+using Chabloom.Payments.ViewModels;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace Chabloom.Payments.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountUsersController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<AccountUsersController> _logger;
+
+        public AccountUsersController(ApplicationDbContext context, ILogger<AccountUsersController> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        [HttpGet]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        public async Task<ActionResult<IEnumerable<AccountUserViewModel>>> GetAccountUsers(Guid? tenantId)
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // TODO: Query tenant for access
+
+            List<AccountUserViewModel> accountUsers;
+            if (tenantId == null)
+            {
+                // Find all account users the user has access to
+                accountUsers = await _context.AccountUsers
+                    .Include(x => x.Role)
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Account.Tenant.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
+                    .Select(x => new AccountUserViewModel
+                    {
+                        Id = x.Id,
+                        UserId = x.UserId,
+                        Role = x.Role.Name,
+                        Account = x.Account.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // Find all account users the user has access to
+                accountUsers = await _context.AccountUsers
+                    .Include(x => x.Role)
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Account.Tenant.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
+                    .Where(x => x.Account.Tenant.Id == tenantId)
+                    .Select(x => new AccountUserViewModel
+                    {
+                        Id = x.Id,
+                        UserId = x.UserId,
+                        Role = x.Role.Name,
+                        Account = x.Account.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
+
+            return Ok(accountUsers);
+        }
+
+        [HttpGet("{id}")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        public async Task<ActionResult<AccountUserViewModel>> GetAccountUser(Guid id)
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // TODO: Query tenant for access
+
+            // Find the specified account user if the user has access to it
+            var accountUser = await _context.AccountUsers
+                .Include(x => x.Role)
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                .Where(x => x.Account.Tenant.Users.Select(y => y.UserId).Contains(userId))
+                .Where(x => !x.Disabled)
+                .Select(x => new AccountUserViewModel
+                {
+                    Id = x.Id,
+                    UserId = x.UserId,
+                    Role = x.Role.Name,
+                    Account = x.Account.Id
+                })
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (accountUser == null)
+            {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown account user {id}");
+                return NotFound();
+            }
+
+            return Ok(accountUser);
+        }
+
+        [HttpPut("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> PutAccountUser(Guid id, AccountUserViewModel viewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (viewModel == null || id != viewModel.Id)
+            {
+                return BadRequest();
+            }
+
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Find the specified accountUser
+            var accountUser = await _context.AccountUsers
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (accountUser == null)
+            {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown account user {id}");
+                return NotFound();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!accountUser.Account.Tenant.Users
+                .Select(x => x.UserId)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {accountUser.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Ensure the current user is a tenant admin or manager
+            var tenantUser = accountUser.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (tenantUser != null &&
+                tenantUser.Role.Name != "Admin" &&
+                tenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning($"User id {userId} did not have permissions to update account user for tenant {accountUser.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Update the account user
+            accountUser.Role = await _context.AccountRoles
+                .FirstOrDefaultAsync(x => x.Name == viewModel.Role)
+                .ConfigureAwait(false);
+            accountUser.UpdatedUser = userId;
+            accountUser.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            // Ensure the account role was found
+            if (accountUser.Role == null)
+            {
+                _logger.LogWarning($"Specified account role {viewModel.Role} could not be found");
+                return BadRequest();
+            }
+
+            _context.Update(accountUser);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            return NoContent();
+        }
+
+        [HttpPost]
+        [ProducesResponseType(201)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        public async Task<ActionResult<AccountUserViewModel>> PostAccountUser(AccountUserViewModel viewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (viewModel == null)
+            {
+                return BadRequest();
+            }
+
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Create the new account user
+            var accountUser = new AccountUser
+            {
+                UserId = userId,
+                Account = await _context.Accounts
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                    .ConfigureAwait(false),
+                Role = await _context.AccountRoles
+                    .FirstOrDefaultAsync(x => x.Name == viewModel.Role)
+                    .ConfigureAwait(false),
+                CreatedUser = userId,
+                UpdatedUser = userId,
+                DisabledUser = userId
+            };
+
+            // Ensure the account was found
+            if (accountUser.Account == null)
+            {
+                _logger.LogWarning($"Specified account {viewModel.Account} could not be found");
+                return BadRequest();
+            }
+
+            // Ensure the account role was found
+            if (accountUser.Role == null)
+            {
+                _logger.LogWarning($"Specified account role {viewModel.Role} could not be found");
+                return BadRequest();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!accountUser.Account.Tenant.Users
+                .Select(x => x.UserId)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {accountUser.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Ensure the current user is a tenant admin or manager
+            var curTenantUser = accountUser.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (curTenantUser != null &&
+                curTenantUser.Role.Name != "Admin" &&
+                curTenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to create account user for tenant {accountUser.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            await _context.AccountUsers.AddAsync(accountUser)
+                .ConfigureAwait(false);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            viewModel.Id = accountUser.Id;
+
+            return CreatedAtAction("GetAccountUser", new {id = viewModel.Id}, viewModel);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> DeleteAccountUser(Guid id)
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Find the specified account if the user has access to it
+            var accountUser = await _context.AccountUsers
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                .ThenInclude(x => x.Role)
+                .Where(x => !x.Disabled)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (accountUser == null)
+            {
+                // Return 404 even if the item exists to prevent leakage of items
+                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
+                return NotFound();
+            }
+
+            // Ensure the current user belongs to the tenant
+            if (!accountUser.Account.Tenant.Users
+                .Select(x => x.UserId)
+                .Contains(userId))
+            {
+                _logger.LogWarning($"User id {userId} did not belong to tenant {accountUser.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Ensure the current user is a tenant admin or manager
+            var curTenantUser = accountUser.Account.Tenant.Users
+                .FirstOrDefault(x => x.UserId == userId);
+            if (curTenantUser != null &&
+                curTenantUser.Role.Name != "Admin" &&
+                curTenantUser.Role.Name != "Manager")
+            {
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to disable account user for tenant {accountUser.Account.Tenant.Id}");
+                return Forbid();
+            }
+
+            // Disable the account user
+            accountUser.Disabled = true;
+            accountUser.DisabledUser = userId;
+            accountUser.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(accountUser);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            return NoContent();
+        }
+    }
+}

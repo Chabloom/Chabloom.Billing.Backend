@@ -7,10 +7,15 @@ namespace Chabloom.Payments.ViewModels
 {
     public class AccountUserViewModel
     {
+        public Guid Id { get; set; } = Guid.NewGuid();
+
         [Required]
-        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
 
         [Required]
         public Guid Account { get; set; }
+
+        [Required]
+        public string Role { get; set; }
     }
 }
