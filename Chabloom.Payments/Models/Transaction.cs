@@ -6,8 +6,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Chabloom.Payments.Models
 {
-    [Table("PaymentsBillTransactions")]
-    public class BillTransaction
+    [Table("PaymentsTransactions")]
+    public class Transaction
     {
         [Required]
         [Key]

@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Chabloom.Payments.ViewModels
 {
-    public class BillTransactionViewModel
+    public class TransactionViewModel
     {
         public Guid Id { get; set; }
 
