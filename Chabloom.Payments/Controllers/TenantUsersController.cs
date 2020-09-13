@@ -131,7 +131,7 @@ namespace Chabloom.Payments.Controllers
                     Role = x.Role.Name,
                     Tenant = x.Tenant.Id
                 })
-                .FirstOrDefaultAsync(x => x.Id == id)
+                .FirstOrDefaultAsync(x => x.UserId == id)
                 .ConfigureAwait(false);
             if (tenantUser == null)
             {
