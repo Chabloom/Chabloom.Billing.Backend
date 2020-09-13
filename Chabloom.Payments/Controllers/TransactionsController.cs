@@ -34,7 +34,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<TransactionViewModel>>> GetTransactions(Guid? tenantId)
+        public async Task<ActionResult<IEnumerable<TransactionViewModel>>> GetTransactions(Guid? accountId, Guid? tenantId)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -54,7 +54,7 @@ namespace Chabloom.Payments.Controllers
             // TODO: Query tenant for access
 
             List<TransactionViewModel> transactions;
-            if (tenantId == null)
+            if (accountId != null)
             {
                 // Find all transactions the user has access to
                 transactions = await _context.Transactions
@@ -63,6 +63,31 @@ namespace Chabloom.Payments.Controllers
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
                     .Where(x => !x.Disabled)
+                    .Where(x => x.Bill.Account.Id == accountId)
+                    .Select(x => new TransactionViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        ExternalId = x.ExternalId,
+                        Amount = x.Amount,
+                        Bill = x.Bill.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
+            else if (tenantId != null)
+            {
+                // Find all transactions the user has access to
+                transactions = await _context.Transactions
+                    .Include(x => x.Bill)
+                    .ThenInclude(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .Include(x => x.Bill)
+                    .ThenInclude(x => x.Account)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
+                    .Where(x => x.Bill.Account.Tenant.Id == tenantId)
                     .Select(x => new TransactionViewModel
                     {
                         Id = x.Id,
@@ -80,13 +105,9 @@ namespace Chabloom.Payments.Controllers
                 transactions = await _context.Transactions
                     .Include(x => x.Bill)
                     .ThenInclude(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Bill)
-                    .ThenInclude(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
                     .Where(x => !x.Disabled)
-                    .Where(x => x.Bill.Account.Tenant.Id == tenantId)
                     .Select(x => new TransactionViewModel
                     {
                         Id = x.Id,

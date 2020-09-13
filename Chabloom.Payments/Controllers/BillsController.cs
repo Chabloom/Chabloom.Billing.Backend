@@ -34,7 +34,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<BillViewModel>>> GetBills(Guid? tenantId)
+        public async Task<ActionResult<IEnumerable<BillViewModel>>> GetBills(Guid? accountId, Guid? tenantId)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -54,7 +54,7 @@ namespace Chabloom.Payments.Controllers
             // TODO: Query tenant for access
 
             List<BillViewModel> bills;
-            if (tenantId == null)
+            if (accountId != null)
             {
                 // Find all bills the user has access to
                 bills = await _context.Bills
@@ -62,6 +62,29 @@ namespace Chabloom.Payments.Controllers
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
                     .Where(x => !x.Disabled)
+                    .Where(x => x.Account.Id == accountId)
+                    .Select(x => new BillViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        Amount = x.Amount,
+                        DueDate = x.DueDate,
+                        Account = x.Account.Id
+                    })
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+            }
+            else if (tenantId != null)
+            {
+                // Find all bills the user has access to
+                bills = await _context.Bills
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Users)
+                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                    .Where(x => !x.Disabled)
+                    .Where(x => x.Account.Tenant.Id == tenantId)
                     .Select(x => new BillViewModel
                     {
                         Id = x.Id,
@@ -78,12 +101,9 @@ namespace Chabloom.Payments.Controllers
                 // Find all bills the user has access to
                 bills = await _context.Bills
                     .Include(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Account)
                     .ThenInclude(x => x.Users)
                     .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
                     .Where(x => !x.Disabled)
-                    .Where(x => x.Account.Tenant.Id == tenantId)
                     .Select(x => new BillViewModel
                     {
                         Id = x.Id,
