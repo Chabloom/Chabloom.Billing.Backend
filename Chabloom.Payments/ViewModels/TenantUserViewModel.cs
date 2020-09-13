@@ -7,7 +7,7 @@ namespace Chabloom.Payments.ViewModels
 {
     public class TenantUserViewModel
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
 
         [Required]
         public Guid UserId { get; set; }
