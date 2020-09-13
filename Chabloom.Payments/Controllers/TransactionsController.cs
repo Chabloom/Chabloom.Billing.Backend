@@ -51,18 +51,40 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
-            List<TransactionViewModel> transactions;
+            // Get all transactions the user is authorized to view
+            var transactions = await _context.Transactions
+                // Include bill account users
+                .Include(x => x.Bill)
+                .ThenInclude(x => x.Account)
+                .ThenInclude(x => x.Users)
+                // Include bill tenant users
+                .Include(x => x.Bill)
+                .ThenInclude(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Ensure the transaction has not been deleted
+                .Where(x => !x.Disabled)
+                // Ensure the current user exists in bill account or bill tenant users
+                .Where(x => x.Bill.Account.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Bill.Account.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
+                .ToListAsync()
+                .ConfigureAwait(false);
+            if (transactions == null)
+            {
+                return new List<TransactionViewModel>();
+            }
+
+            List<TransactionViewModel> viewModels;
             if (accountId != null)
             {
-                // Find all transactions the user has access to
-                transactions = await _context.Transactions
-                    .Include(x => x.Bill)
-                    .ThenInclude(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Filter transactions by bill account id
+                viewModels = transactions
                     .Where(x => x.Bill.Account.Id == accountId)
                     .Select(x => new TransactionViewModel
                     {
@@ -72,21 +94,12 @@ namespace Chabloom.Payments.Controllers
                         Amount = x.Amount,
                         Bill = x.Bill.Id
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
             else if (tenantId != null)
             {
-                // Find all transactions the user has access to
-                transactions = await _context.Transactions
-                    .Include(x => x.Bill)
-                    .ThenInclude(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Bill)
-                    .ThenInclude(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Filter transactions by bill tenant id
+                viewModels = transactions
                     .Where(x => x.Bill.Account.Tenant.Id == tenantId)
                     .Select(x => new TransactionViewModel
                     {
@@ -96,18 +109,12 @@ namespace Chabloom.Payments.Controllers
                         Amount = x.Amount,
                         Bill = x.Bill.Id
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
             else
             {
-                // Find all transactions the user has access to
-                transactions = await _context.Transactions
-                    .Include(x => x.Bill)
-                    .ThenInclude(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Do not filter transactions
+                viewModels = transactions
                     .Select(x => new TransactionViewModel
                     {
                         Id = x.Id,
@@ -116,11 +123,10 @@ namespace Chabloom.Payments.Controllers
                         Amount = x.Amount,
                         Bill = x.Bill.Id
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
 
-            return Ok(transactions);
+            return Ok(viewModels);
         }
 
         [HttpGet("{id}")]
@@ -144,15 +150,28 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
             // Find the specified transaction if the user has access to it
             var transaction = await _context.Transactions
+                // Include bill account users
                 .Include(x => x.Bill)
                 .ThenInclude(x => x.Account)
                 .ThenInclude(x => x.Users)
-                .Where(x => x.Bill.Account.Users.Select(y => y.UserId).Contains(userId))
+                // Include bill tenant users
+                .Include(x => x.Bill)
+                .ThenInclude(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Ensure the transaction has not been deleted
                 .Where(x => !x.Disabled)
+                // Ensure the current user exists in bill account or bill tenant users
+                .Where(x => x.Bill.Account.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Bill.Account.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
                 .Select(x => new TransactionViewModel
                 {
                     Id = x.Id,

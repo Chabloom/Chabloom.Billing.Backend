@@ -51,17 +51,40 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
-            List<BillViewModel> bills;
+            // Get all bills the user is authorized to view
+            var bills = await _context.Bills
+                // Include account users
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Users)
+                // Include tenant users
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Include the schedule
+                .Include(x => x.Schedule)
+                // Ensure the bill has not been deleted
+                .Where(x => !x.Disabled)
+                // Ensure the current user exists in account or tenant users
+                .Where(x => x.Account.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Account.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
+                .ToListAsync()
+                .ConfigureAwait(false);
+            if (bills == null)
+            {
+                return new List<BillViewModel>();
+            }
+
+            List<BillViewModel> viewModels;
             if (accountId != null)
             {
-                // Find all bills the user has access to
-                bills = await _context.Bills
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Filter bills by account id
+                viewModels = bills
                     .Where(x => x.Account.Id == accountId)
                     .Select(x => new BillViewModel
                     {
@@ -69,21 +92,15 @@ namespace Chabloom.Payments.Controllers
                         Name = x.Name,
                         Amount = x.Amount,
                         DueDate = x.DueDate,
-                        Account = x.Account.Id
+                        Account = x.Account.Id,
+                        Schedule = x.Schedule?.Id ?? Guid.Empty
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
             else if (tenantId != null)
             {
-                // Find all bills the user has access to
-                bills = await _context.Bills
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Filter bills by tenant id
+                viewModels = bills
                     .Where(x => x.Account.Tenant.Id == tenantId)
                     .Select(x => new BillViewModel
                     {
@@ -91,32 +108,28 @@ namespace Chabloom.Payments.Controllers
                         Name = x.Name,
                         Amount = x.Amount,
                         DueDate = x.DueDate,
-                        Account = x.Account.Id
+                        Account = x.Account.Id,
+                        Schedule = x.Schedule?.Id ?? Guid.Empty
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
             else
             {
-                // Find all bills the user has access to
-                bills = await _context.Bills
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Do not filter bills
+                viewModels = bills
                     .Select(x => new BillViewModel
                     {
                         Id = x.Id,
                         Name = x.Name,
                         Amount = x.Amount,
                         DueDate = x.DueDate,
-                        Account = x.Account.Id
+                        Account = x.Account.Id,
+                        Schedule = x.Schedule?.Id ?? Guid.Empty
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
 
-            return Ok(bills);
+            return Ok(viewModels);
         }
 
         [HttpGet("{id}")]
@@ -140,21 +153,36 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
             // Find the specified bill if the user has access to it
             var bill = await _context.Bills
+                // Include account users
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                // Include tenant users
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Include the schedule
+                .Include(x => x.Schedule)
+                // Ensure the bill has not been deleted
                 .Where(x => !x.Disabled)
+                // Ensure the current user exists in account or tenant users
+                .Where(x => x.Account.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Account.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
                 .Select(x => new BillViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     Amount = x.Amount,
                     DueDate = x.DueDate,
-                    Account = x.Account.Id
+                    Account = x.Account.Id,
+                    Schedule = x.Schedule == null ? Guid.Empty : x.Schedule.Id
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);

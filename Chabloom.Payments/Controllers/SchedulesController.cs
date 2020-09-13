@@ -51,17 +51,38 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
-            List<ScheduleViewModel> schedules;
+            // Get all schedules the user is authorized to view
+            var schedules = await _context.Schedules
+                // Include account users
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Users)
+                // Include tenant users
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Ensure the schedule has not been deleted
+                .Where(x => !x.Disabled)
+                // Ensure the current user exists in account or tenant users
+                .Where(x => x.Account.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Account.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
+                .ToListAsync()
+                .ConfigureAwait(false);
+            if (schedules == null)
+            {
+                return new List<ScheduleViewModel>();
+            }
+
+            List<ScheduleViewModel> viewModels;
             if (accountId != null)
             {
-                // Find all schedules the user has access to
-                schedules = await _context.Schedules
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Filter schedules by account id
+                viewModels = schedules
                     .Where(x => x.Account.Id == accountId)
                     .Select(x => new ScheduleViewModel
                     {
@@ -72,19 +93,12 @@ namespace Chabloom.Payments.Controllers
                         Interval = x.Interval,
                         Account = x.Account.Id
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
             else if (tenantId != null)
             {
-                // Find all schedules the user has access to
-                schedules = await _context.Schedules
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Filter schedules by tenant id
+                viewModels = schedules
                     .Where(x => x.Account.Tenant.Id == tenantId)
                     .Select(x => new ScheduleViewModel
                     {
@@ -95,17 +109,12 @@ namespace Chabloom.Payments.Controllers
                         Interval = x.Interval,
                         Account = x.Account.Id
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
             else
             {
-                // Find all schedules the user has access to
-                schedules = await _context.Schedules
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Do not filter schedules
+                viewModels = schedules
                     .Select(x => new ScheduleViewModel
                     {
                         Id = x.Id,
@@ -115,11 +124,10 @@ namespace Chabloom.Payments.Controllers
                         Interval = x.Interval,
                         Account = x.Account.Id
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
             }
 
-            return Ok(schedules);
+            return Ok(viewModels);
         }
 
         [HttpGet("{id}")]
@@ -143,14 +151,26 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
             // Find the specified schedule if the user has access to it
             var account = await _context.Schedules
+                // Include account users
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Users.Select(y => y.UserId).Contains(userId))
+                // Include tenant users
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Ensure the schedule has not been deleted
                 .Where(x => !x.Disabled)
+                // Ensure the current user exists in account or tenant users
+                .Where(x => x.Account.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Account.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
                 .Select(x => new ScheduleViewModel
                 {
                     Id = x.Id,
@@ -237,7 +257,8 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to update schedule for tenant {schedule.Account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to update schedule for tenant {schedule.Account.Tenant.Id}");
                 return Forbid();
             }
 
@@ -298,6 +319,7 @@ namespace Chabloom.Payments.Controllers
                 Account = await _context.Accounts
                     .Include(x => x.Tenant)
                     .ThenInclude(x => x.Users)
+                    .ThenInclude(x => x.Role)
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                     .ConfigureAwait(false),
                 CreatedUser = userId,
@@ -328,7 +350,8 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to create schedule for tenant {schedule.Account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to create schedule for tenant {schedule.Account.Tenant.Id}");
                 return Forbid();
             }
 
@@ -396,7 +419,8 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to disable schedule for tenant {schedule.Account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to disable schedule for tenant {schedule.Account.Tenant.Id}");
                 return Forbid();
             }
 
