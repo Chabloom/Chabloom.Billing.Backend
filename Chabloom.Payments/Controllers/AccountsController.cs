@@ -51,36 +51,36 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
-            List<AccountViewModel> accounts;
-            if (tenantId == null)
+            // Get all accounts the user is authorized to view
+            var accounts = await _context.Accounts
+                // Include account users
+                .Include(x => x.Users)
+                // Include tenant users
+                .Include(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Ensure the account has not been deleted
+                .Where(x => !x.Disabled)
+                // Ensure the current user exists in account or tenant users
+                .Where(x => x.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
+                .ToListAsync()
+                .ConfigureAwait(false);
+            if (accounts == null)
             {
-                // Find all accounts the user has access to
-                accounts = await _context.Accounts
-                    .Include(x => x.Tenant)
-                    .Include(x => x.Users)
-                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
-                    .Select(x => new AccountViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name,
-                        ExternalId = x.ExternalId,
-                        PrimaryAddress = x.PrimaryAddress,
-                        Tenant = x.Tenant.Id
-                    })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                return new List<AccountViewModel>();
             }
-            else
+
+            List<AccountViewModel> viewModels;
+            if (tenantId != null)
             {
-                // Find all accounts the user has access to
-                accounts = await _context.Accounts
-                    .Include(x => x.Tenant)
-                    .Include(x => x.Users)
-                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                // Filter accounts by tenant id
+                viewModels = accounts
                     .Where(x => x.Tenant.Id == tenantId)
                     .Select(x => new AccountViewModel
                     {
@@ -90,11 +90,24 @@ namespace Chabloom.Payments.Controllers
                         PrimaryAddress = x.PrimaryAddress,
                         Tenant = x.Tenant.Id
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
+            }
+            else
+            {
+                // Do not filter accounts
+                viewModels = accounts
+                    .Select(x => new AccountViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        ExternalId = x.ExternalId,
+                        PrimaryAddress = x.PrimaryAddress,
+                        Tenant = x.Tenant.Id
+                    })
+                    .ToList();
             }
 
-            return Ok(accounts);
+            return Ok(viewModels);
         }
 
         [HttpGet("{id}")]
@@ -118,14 +131,24 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
+            // TODO: Role-Based Access
 
             // Find the specified account if the user has access to it
             var account = await _context.Accounts
-                .Include(x => x.Tenant)
+                // Include account users
                 .Include(x => x.Users)
-                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                // Include tenant users
+                .Include(x => x.Tenant)
+                .ThenInclude(x => x.Users)
+                // Ensure the account has not been deleted
                 .Where(x => !x.Disabled)
+                // Ensure the current user exists in account or tenant users
+                .Where(x => x.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId) ||
+                            x.Tenant.Users
+                                .Select(y => y.UserId)
+                                .Contains(userId))
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
