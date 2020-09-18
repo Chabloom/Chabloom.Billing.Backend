@@ -2,6 +2,7 @@
 
 using System;
 using Chabloom.Payments.Data;
+using Chabloom.Payments.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -58,6 +59,8 @@ namespace Chabloom.Payments
             });
 
             services.AddControllers();
+
+            services.AddScoped<IValidator, Validator>();
 
             if (Environment.IsDevelopment())
             {
