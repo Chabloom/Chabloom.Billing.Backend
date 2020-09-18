@@ -20,5 +20,7 @@ namespace Chabloom.Payments.ViewModels
 
         [Required]
         public Guid Bill { get; set; }
+
+        public Guid Account { get; set; }
     }
 }
