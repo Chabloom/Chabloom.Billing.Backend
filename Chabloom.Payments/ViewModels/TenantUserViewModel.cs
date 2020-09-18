@@ -15,6 +15,8 @@ namespace Chabloom.Payments.ViewModels
         [Required]
         public Guid Tenant { get; set; }
 
+        public string TenantName { get; set; }
+
         [Required]
         public Guid Role { get; set; }
 
