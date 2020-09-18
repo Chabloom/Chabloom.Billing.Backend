@@ -83,9 +83,10 @@ namespace Chabloom.Payments.Controllers
                 {
                     Id = x.Id,
                     UserId = x.UserId,
-                    Role = x.Role.Id,
-                    RoleName = x.Role.Name
+                    Role = x.Role?.Id ?? Guid.Empty,
+                    RoleName = x.Role?.Name
                 })
+                .Distinct()
                 .ToList();
 
             return Ok(viewModels);

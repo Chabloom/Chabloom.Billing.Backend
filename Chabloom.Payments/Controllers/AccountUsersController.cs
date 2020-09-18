@@ -108,9 +108,11 @@ namespace Chabloom.Payments.Controllers
                         Id = x.Id,
                         UserId = x.UserId,
                         Account = x.Account.Id,
-                        Role = x.Role.Id,
-                        RoleName = x.Role.Name
+                        AccountName = x.Account.Name,
+                        Role = x.Role?.Id ?? Guid.Empty,
+                        RoleName = x.Role?.Name
                     })
+                    .Distinct()
                     .ToList();
             }
             else if (tenantId != null)
@@ -123,9 +125,11 @@ namespace Chabloom.Payments.Controllers
                         Id = x.Id,
                         UserId = x.UserId,
                         Account = x.Account.Id,
-                        Role = x.Role.Id,
-                        RoleName = x.Role.Name
+                        AccountName = x.Account.Name,
+                        Role = x.Role?.Id ?? Guid.Empty,
+                        RoleName = x.Role?.Name
                     })
+                    .Distinct()
                     .ToList();
             }
             else
@@ -137,9 +141,11 @@ namespace Chabloom.Payments.Controllers
                         Id = x.Id,
                         UserId = x.UserId,
                         Account = x.Account.Id,
-                        Role = x.Role.Id,
-                        RoleName = x.Role.Name
+                        AccountName = x.Account.Name,
+                        Role = x.Role?.Id ?? Guid.Empty,
+                        RoleName = x.Role?.Name
                     })
+                    .Distinct()
                     .ToList();
             }
 
@@ -180,6 +186,7 @@ namespace Chabloom.Payments.Controllers
                     Id = x.Id,
                     UserId = x.UserId,
                     Account = x.Account.Id,
+                    AccountName = x.Account.Name,
                     Role = x.Role.Id,
                     RoleName = x.Role.Name
                 })
