@@ -7,31 +7,39 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Chabloom.Payments.Services;
 using Chabloom.Payments.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Chabloom.Payments.Controllers
 {
-    [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
     public class AccountUsersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AccountUsersController> _logger;
+        private readonly IValidator _validator;
 
-        public AccountUsersController(ApplicationDbContext context, ILogger<AccountUsersController> logger)
+        public AccountUsersController(ApplicationDbContext context, ILogger<AccountUsersController> logger,
+            IValidator validator)
         {
             _context = context;
             _logger = logger;
+            _validator = validator;
         }
 
         [HttpGet]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<AccountUserViewModel>>> GetAccountUsers(Guid? tenantId)
+        public async Task<ActionResult<IEnumerable<AccountUserViewModel>>> GetAccountUsers(Guid? accountId,
+            Guid? tenantId)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -48,52 +56,94 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
-
-            List<AccountUserViewModel> accountUsers;
-            if (tenantId == null)
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            bool userAuthorized;
+            if (accountId != null)
             {
-                // Find all account users the user has access to
-                accountUsers = await _context.AccountUsers
-                    .Include(x => x.Role)
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Tenant.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
-                    .Select(x => new AccountUserViewModel
-                    {
-                        Id = x.Id,
-                        UserId = x.UserId,
-                        Role = x.Role.Name,
-                        Account = x.Account.Id
-                    })
-                    .ToListAsync()
+                userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId.Value)
+                    .ConfigureAwait(false);
+            }
+            else if (tenantId != null)
+            {
+                userAuthorized = await _validator.CheckTenantAccessAsync(userId, tenantId.Value)
                     .ConfigureAwait(false);
             }
             else
             {
-                // Find all account users the user has access to
-                accountUsers = await _context.AccountUsers
-                    .Include(x => x.Role)
-                    .Include(x => x.Account)
-                    .ThenInclude(x => x.Tenant)
-                    .ThenInclude(x => x.Users)
-                    .Where(x => x.Account.Tenant.Users.Select(y => y.UserId).Contains(userId))
-                    .Where(x => !x.Disabled)
+                userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                    .ConfigureAwait(false);
+            }
+
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access account users");
+                return Forbid();
+            }
+
+            // Get all account users
+            var accountUsers = await _context.AccountUsers
+                // Include the account and tenant
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                // Include the role
+                .Include(x => x.Role)
+                // Ensure the account user has not been deleted
+                .Where(x => !x.Disabled)
+                .ToListAsync()
+                .ConfigureAwait(false);
+            if (accountUsers == null || !accountUsers.Any())
+            {
+                return new List<AccountUserViewModel>();
+            }
+
+            List<AccountUserViewModel> viewModels;
+            if (accountId != null)
+            {
+                // Filter account users by account id
+                viewModels = accountUsers
+                    .Where(x => x.Account.Id == accountId)
+                    .Select(x => new AccountUserViewModel
+                    {
+                        Id = x.Id,
+                        UserId = x.UserId,
+                        Account = x.Account.Id,
+                        Role = x.Role.Id,
+                        RoleName = x.Role.Name
+                    })
+                    .ToList();
+            }
+            else if (tenantId != null)
+            {
+                // Filter account users by tenant id
+                viewModels = accountUsers
                     .Where(x => x.Account.Tenant.Id == tenantId)
                     .Select(x => new AccountUserViewModel
                     {
                         Id = x.Id,
                         UserId = x.UserId,
-                        Role = x.Role.Name,
-                        Account = x.Account.Id
+                        Account = x.Account.Id,
+                        Role = x.Role.Id,
+                        RoleName = x.Role.Name
                     })
-                    .ToListAsync()
-                    .ConfigureAwait(false);
+                    .ToList();
+            }
+            else
+            {
+                // Do not filter users
+                viewModels = accountUsers
+                    .Select(x => new AccountUserViewModel
+                    {
+                        Id = x.Id,
+                        UserId = x.UserId,
+                        Account = x.Account.Id,
+                        Role = x.Role.Id,
+                        RoleName = x.Role.Name
+                    })
+                    .ToList();
             }
 
-            return Ok(accountUsers);
+            return Ok(viewModels);
         }
 
         [HttpGet("{id}")]
@@ -117,33 +167,41 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Query tenant for access
-
-            // Find the specified account user if the user has access to it
-            var accountUser = await _context.AccountUsers
-                .Include(x => x.Role)
+            // Find the specified account user
+            var viewModel = await _context.AccountUsers
+                // Include the account
                 .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                .ThenInclude(x => x.Users)
-                .Where(x => x.Account.Tenant.Users.Select(y => y.UserId).Contains(userId))
+                // Include the role
+                .Include(x => x.Role)
+                // Ensure the account user has not been deleted
                 .Where(x => !x.Disabled)
                 .Select(x => new AccountUserViewModel
                 {
                     Id = x.Id,
                     UserId = x.UserId,
-                    Role = x.Role.Name,
-                    Account = x.Account.Id
+                    Account = x.Account.Id,
+                    Role = x.Role.Id,
+                    RoleName = x.Role.Name
                 })
                 .FirstOrDefaultAsync(x => x.UserId == id)
                 .ConfigureAwait(false);
-            if (accountUser == null)
+            if (viewModel == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown account user {id}");
                 return NotFound();
             }
 
-            return Ok(accountUser);
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.Account)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access account user {id}");
+                return Forbid();
+            }
+
+            return Ok(viewModel);
         }
 
         [HttpPut("{id}")]
@@ -211,13 +269,14 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to update account user for tenant {accountUser.Account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to update account user for tenant {accountUser.Account.Tenant.Id}");
                 return Forbid();
             }
 
             // Update the account user
             accountUser.Role = await _context.AccountRoles
-                .FirstOrDefaultAsync(x => x.Name == viewModel.Role)
+                .FirstOrDefaultAsync(x => x.Id == viewModel.Role)
                 .ConfigureAwait(false);
             accountUser.UpdatedUser = userId;
             accountUser.UpdatedTimestamp = DateTimeOffset.UtcNow;
@@ -276,7 +335,7 @@ namespace Chabloom.Payments.Controllers
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
                     .ConfigureAwait(false),
                 Role = await _context.AccountRoles
-                    .FirstOrDefaultAsync(x => x.Name == viewModel.Role)
+                    .FirstOrDefaultAsync(x => x.Id == viewModel.Role)
                     .ConfigureAwait(false),
                 CreatedUser = userId,
                 UpdatedUser = userId,

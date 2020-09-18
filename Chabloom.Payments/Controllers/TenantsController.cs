@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Chabloom.Payments.Services;
 using Chabloom.Payments.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,11 +24,13 @@ namespace Chabloom.Payments.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<TenantsController> _logger;
+        private readonly IValidator _validator;
 
-        public TenantsController(ApplicationDbContext context, ILogger<TenantsController> logger)
+        public TenantsController(ApplicationDbContext context, ILogger<TenantsController> logger, IValidator validator)
         {
             _context = context;
             _logger = logger;
+            _validator = validator;
         }
 
         [HttpGet]
@@ -35,21 +38,68 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<TenantViewModel>>> GetTenants()
+        public async Task<ActionResult<IEnumerable<TenantViewModel>>> GetTenants(Guid? userId)
         {
             // Find all tenants
             var tenants = await _context.Tenants
+                // Include the users
                 .Include(x => x.Users)
+                // Include the account users
+                .Include(x => x.Accounts)
+                .ThenInclude(x => x.Users)
+                // Ensure the tenant has not been deleted
                 .Where(x => !x.Disabled)
-                .Select(x => new TenantViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name
-                })
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            return Ok(tenants);
+            List<TenantViewModel> viewModels;
+            if (userId != null)
+            {
+                // Filter tenants by user id
+                var userTenants = tenants
+                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId.Value))
+                    .Select(x => new TenantViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    })
+                    .ToList();
+
+                // Get accounts where the user is assigned
+                var userAccounts = await _context.Accounts
+                    .Include(x => x.Users)
+                    .Include(x => x.Tenant)
+                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId.Value))
+                    .ToListAsync()
+                    .ConfigureAwait(false);
+
+                // Add tenants where the user is assigned to the account
+                userTenants.AddRange(userAccounts
+                    .Select(x => x.Tenant)
+                    .Select(x => new TenantViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    }));
+
+                // Select all distinct tenants
+                viewModels = userTenants
+                    .Distinct()
+                    .ToList();
+            }
+            else
+            {
+                // Do not filter users
+                viewModels = tenants
+                    .Select(x => new TenantViewModel
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    })
+                    .ToList();
+            }
+
+            return Ok(viewModels);
         }
 
         [HttpGet("{id}")]
@@ -73,10 +123,9 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Find the specified tenant if the user has access to it
-            var tenant = await _context.Tenants
-                .Include(x => x.Users)
-                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+            // Find the specified tenant
+            var viewModel = await _context.Tenants
+                // Ensure the tenant has not been deleted
                 .Where(x => !x.Disabled)
                 .Select(x => new TenantViewModel
                 {
@@ -85,14 +134,23 @@ namespace Chabloom.Payments.Controllers
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (tenant == null)
+            if (viewModel == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
                 return NotFound();
             }
 
-            return Ok(tenant);
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, id)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access tenant {id}");
+                return Forbid();
+            }
+
+            return Ok(viewModel);
         }
 
         [HttpPut("{id}")]
@@ -225,7 +283,7 @@ namespace Chabloom.Payments.Controllers
             {
                 new TenantRole
                 {
-                    Name = "Admin", 
+                    Name = "Admin",
                     Tenant = tenant,
                     CreatedUser = userId,
                     UpdatedUser = userId,
@@ -233,7 +291,7 @@ namespace Chabloom.Payments.Controllers
                 },
                 new TenantRole
                 {
-                    Name = "Manager", 
+                    Name = "Manager",
                     Tenant = tenant,
                     CreatedUser = userId,
                     UpdatedUser = userId,
@@ -241,7 +299,7 @@ namespace Chabloom.Payments.Controllers
                 },
                 new TenantRole
                 {
-                    Name = "Basic", 
+                    Name = "Basic",
                     Tenant = tenant,
                     CreatedUser = userId,
                     UpdatedUser = userId,

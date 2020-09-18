@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Chabloom.Payments.Services;
 using Chabloom.Payments.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,11 +24,14 @@ namespace Chabloom.Payments.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<SchedulesController> _logger;
+        private readonly IValidator _validator;
 
-        public SchedulesController(ApplicationDbContext context, ILogger<SchedulesController> logger)
+        public SchedulesController(ApplicationDbContext context, ILogger<SchedulesController> logger,
+            IValidator validator)
         {
             _context = context;
             _logger = logger;
+            _validator = validator;
         }
 
         [HttpGet]
@@ -51,26 +55,38 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the user is authorized at the requested level
             // TODO: Role-Based Access
+            bool userAuthorized;
+            if (accountId != null)
+            {
+                userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId.Value)
+                    .ConfigureAwait(false);
+            }
+            else if (tenantId != null)
+            {
+                userAuthorized = await _validator.CheckTenantAccessAsync(userId, tenantId.Value)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                    .ConfigureAwait(false);
+            }
+
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access schedules");
+                return Forbid();
+            }
 
             // Get all schedules the user is authorized to view
             var schedules = await _context.Schedules
-                // Include account users
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Users)
-                // Include tenant users
+                // Include the account and tenant
                 .Include(x => x.Account)
                 .ThenInclude(x => x.Tenant)
-                .ThenInclude(x => x.Users)
                 // Ensure the schedule has not been deleted
                 .Where(x => !x.Disabled)
-                // Ensure the current user exists in account or tenant users
-                .Where(x => x.Account.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId) ||
-                            x.Account.Tenant.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId))
                 .ToListAsync()
                 .ConfigureAwait(false);
             if (schedules == null)
@@ -151,26 +167,12 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Role-Based Access
-
             // Find the specified schedule if the user has access to it
-            var account = await _context.Schedules
-                // Include account users
+            var viewModel = await _context.Schedules
+                // Include the account
                 .Include(x => x.Account)
-                .ThenInclude(x => x.Users)
-                // Include tenant users
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                .ThenInclude(x => x.Users)
                 // Ensure the schedule has not been deleted
                 .Where(x => !x.Disabled)
-                // Ensure the current user exists in account or tenant users
-                .Where(x => x.Account.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId) ||
-                            x.Account.Tenant.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId))
                 .Select(x => new ScheduleViewModel
                 {
                     Id = x.Id,
@@ -182,14 +184,23 @@ namespace Chabloom.Payments.Controllers
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (account == null)
+            if (viewModel == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown schedule {id}");
                 return NotFound();
             }
 
-            return Ok(account);
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.Account)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access schedule {id}");
+                return Forbid();
+            }
+
+            return Ok(viewModel);
         }
 
         [HttpPut("{id}")]

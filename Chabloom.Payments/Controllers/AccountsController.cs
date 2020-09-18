@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Chabloom.Payments.Services;
 using Chabloom.Payments.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,11 +24,14 @@ namespace Chabloom.Payments.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AccountsController> _logger;
+        private readonly IValidator _validator;
 
-        public AccountsController(ApplicationDbContext context, ILogger<AccountsController> logger)
+        public AccountsController(ApplicationDbContext context, ILogger<AccountsController> logger,
+            IValidator validator)
         {
             _context = context;
             _logger = logger;
+            _validator = validator;
         }
 
         [HttpGet]
@@ -51,24 +55,32 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the user is authorized at the requested level
             // TODO: Role-Based Access
+            bool userAuthorized;
+            if (tenantId != null)
+            {
+                userAuthorized = await _validator.CheckTenantAccessAsync(userId, tenantId.Value)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                    .ConfigureAwait(false);
+            }
+
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access accounts");
+                return Forbid();
+            }
 
             // Get all accounts the user is authorized to view
             var accounts = await _context.Accounts
-                // Include account users
-                .Include(x => x.Users)
-                // Include tenant users
+                // Include the tenant
                 .Include(x => x.Tenant)
-                .ThenInclude(x => x.Users)
                 // Ensure the account has not been deleted
                 .Where(x => !x.Disabled)
-                // Ensure the current user exists in account or tenant users
-                .Where(x => x.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId) ||
-                            x.Tenant.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId))
                 .ToListAsync()
                 .ConfigureAwait(false);
             if (accounts == null)
@@ -131,24 +143,12 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Role-Based Access
-
             // Find the specified account if the user has access to it
-            var account = await _context.Accounts
-                // Include account users
-                .Include(x => x.Users)
-                // Include tenant users
+            var viewModel = await _context.Accounts
+                // Include the tenant
                 .Include(x => x.Tenant)
-                .ThenInclude(x => x.Users)
                 // Ensure the account has not been deleted
                 .Where(x => !x.Disabled)
-                // Ensure the current user exists in account or tenant users
-                .Where(x => x.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId) ||
-                            x.Tenant.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId))
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
@@ -159,14 +159,23 @@ namespace Chabloom.Payments.Controllers
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (account == null)
+            if (viewModel == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
                 return NotFound();
             }
 
-            return Ok(account);
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, id)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access account {id}");
+                return Forbid();
+            }
+
+            return Ok(viewModel);
         }
 
         [HttpPut("{id}")]
@@ -233,7 +242,8 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to update account for tenant {account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to update account for tenant {account.Tenant.Id}");
                 return Forbid();
             }
 
@@ -321,7 +331,8 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to create account for tenant {account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to create account for tenant {account.Tenant.Id}");
                 return Forbid();
             }
 
@@ -441,7 +452,8 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to disable account for tenant {account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to disable account for tenant {account.Tenant.Id}");
                 return Forbid();
             }
 

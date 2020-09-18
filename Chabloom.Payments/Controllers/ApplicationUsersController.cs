@@ -6,24 +6,31 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
+using Chabloom.Payments.Services;
 using Chabloom.Payments.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Chabloom.Payments.Controllers
 {
-    [Route("api/[controller]")]
+    [Authorize]
     [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
     public class ApplicationUsersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ApplicationUsersController> _logger;
+        private readonly IValidator _validator;
 
-        public ApplicationUsersController(ApplicationDbContext context, ILogger<ApplicationUsersController> logger)
+        public ApplicationUsersController(ApplicationDbContext context, ILogger<ApplicationUsersController> logger,
+            IValidator validator)
         {
             _context = context;
             _logger = logger;
+            _validator = validator;
         }
 
         [HttpGet]
@@ -41,27 +48,47 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out _))
+            if (!Guid.TryParse(sid, out var userId))
             {
                 _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
             }
 
-            // Find all application users
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access application users");
+                return Forbid();
+            }
+
+            // Get all application users
             var applicationUsers = await _context.ApplicationUsers
+                // Include role
                 .Include(x => x.Role)
-                .ThenInclude(x => x.Users)
+                // Ensure the application user has not been deleted
                 .Where(x => !x.Disabled)
+                .ToListAsync()
+                .ConfigureAwait(false);
+            if (applicationUsers == null || !applicationUsers.Any())
+            {
+                return new List<ApplicationUserViewModel>();
+            }
+
+            // Return all application users
+            var viewModels = applicationUsers
                 .Select(x => new ApplicationUserViewModel
                 {
                     Id = x.Id,
                     UserId = x.UserId,
-                    Role = x.Role.Name,
+                    Role = x.Role.Id,
+                    RoleName = x.Role.Name
                 })
-                .ToListAsync()
-                .ConfigureAwait(false);
+                .ToList();
 
-            return Ok(applicationUsers);
+            return Ok(viewModels);
         }
 
         [HttpGet("{id}")]
@@ -85,27 +112,38 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Find the specified application user if the user has access to it
-            var applicationUser = await _context.ApplicationUsers
+            // Find the specified application user
+            var viewModel = await _context.ApplicationUsers
+                // Include role
                 .Include(x => x.Role)
-                .ThenInclude(x => x.Users)
+                // Ensure the application user has not been deleted
                 .Where(x => !x.Disabled)
                 .Select(x => new ApplicationUserViewModel
                 {
                     Id = x.Id,
                     UserId = x.UserId,
-                    Role = x.Role.Name,
+                    Role = x.Role.Id,
+                    RoleName = x.Role.Name
                 })
                 .FirstOrDefaultAsync(x => x.UserId == id)
                 .ConfigureAwait(false);
-            if (applicationUser == null)
+            if (viewModel == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown application user {id}");
                 return NotFound();
             }
 
-            return Ok(applicationUser);
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access application user {id}");
+                return Forbid();
+            }
+
+            return Ok(viewModel);
         }
     }
 }

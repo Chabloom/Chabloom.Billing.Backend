@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
+using Chabloom.Payments.Services;
 using Chabloom.Payments.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,18 +24,22 @@ namespace Chabloom.Payments.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<TransactionsController> _logger;
+        private readonly IValidator _validator;
 
-        public TransactionsController(ApplicationDbContext context, ILogger<TransactionsController> logger)
+        public TransactionsController(ApplicationDbContext context, ILogger<TransactionsController> logger,
+            IValidator validator)
         {
             _context = context;
             _logger = logger;
+            _validator = validator;
         }
 
         [HttpGet]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<TransactionViewModel>>> GetTransactions(Guid? accountId, Guid? tenantId)
+        public async Task<ActionResult<IEnumerable<TransactionViewModel>>> GetTransactions(Guid? accountId,
+            Guid? tenantId)
         {
             // Get the current user sid
             var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
@@ -51,28 +56,39 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the user is authorized at the requested level
             // TODO: Role-Based Access
+            bool userAuthorized;
+            if (accountId != null)
+            {
+                userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId.Value)
+                    .ConfigureAwait(false);
+            }
+            else if (tenantId != null)
+            {
+                userAuthorized = await _validator.CheckTenantAccessAsync(userId, tenantId.Value)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                    .ConfigureAwait(false);
+            }
 
-            // Get all transactions the user is authorized to view
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access transactions");
+                return Forbid();
+            }
+
+            // Get all transactions
             var transactions = await _context.Transactions
-                // Include bill account users
-                .Include(x => x.Bill)
-                .ThenInclude(x => x.Account)
-                .ThenInclude(x => x.Users)
-                // Include bill tenant users
+                // Include the bill, account and tenant
                 .Include(x => x.Bill)
                 .ThenInclude(x => x.Account)
                 .ThenInclude(x => x.Tenant)
-                .ThenInclude(x => x.Users)
                 // Ensure the transaction has not been deleted
                 .Where(x => !x.Disabled)
-                // Ensure the current user exists in bill account or bill tenant users
-                .Where(x => x.Bill.Account.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId) ||
-                            x.Bill.Account.Tenant.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId))
                 .ToListAsync()
                 .ConfigureAwait(false);
             if (transactions == null)
@@ -83,7 +99,7 @@ namespace Chabloom.Payments.Controllers
             List<TransactionViewModel> viewModels;
             if (accountId != null)
             {
-                // Filter transactions by bill account id
+                // Filter transactions by account id
                 viewModels = transactions
                     .Where(x => x.Bill.Account.Id == accountId)
                     .Select(x => new TransactionViewModel
@@ -98,7 +114,7 @@ namespace Chabloom.Payments.Controllers
             }
             else if (tenantId != null)
             {
-                // Filter transactions by bill tenant id
+                // Filter transactions by tenant id
                 viewModels = transactions
                     .Where(x => x.Bill.Account.Tenant.Id == tenantId)
                     .Select(x => new TransactionViewModel
@@ -150,46 +166,41 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // TODO: Role-Based Access
-
-            // Find the specified transaction if the user has access to it
-            var transaction = await _context.Transactions
-                // Include bill account users
+            // Find the specified transaction
+            var viewModel = await _context.Transactions
+                // Include the bill and account
                 .Include(x => x.Bill)
                 .ThenInclude(x => x.Account)
-                .ThenInclude(x => x.Users)
-                // Include bill tenant users
-                .Include(x => x.Bill)
-                .ThenInclude(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                .ThenInclude(x => x.Users)
                 // Ensure the transaction has not been deleted
                 .Where(x => !x.Disabled)
-                // Ensure the current user exists in bill account or bill tenant users
-                .Where(x => x.Bill.Account.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId) ||
-                            x.Bill.Account.Tenant.Users
-                                .Select(y => y.UserId)
-                                .Contains(userId))
                 .Select(x => new TransactionViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     ExternalId = x.ExternalId,
                     Amount = x.Amount,
-                    Bill = x.Bill.Id
+                    Bill = x.Bill.Id,
+                    Account = x.Bill.Account.Id
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (transaction == null)
+            if (viewModel == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown transaction {id}");
                 return NotFound();
             }
 
-            return Ok(transaction);
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.Account)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access transaction {id}");
+                return Forbid();
+            }
+
+            return Ok(viewModel);
         }
 
         [HttpPost]
@@ -266,7 +277,8 @@ namespace Chabloom.Payments.Controllers
                 tenantUser.Role.Name != "Admin" &&
                 tenantUser.Role.Name != "Manager")
             {
-                _logger.LogWarning($"User id {userId} did not have permissions to create transaction for tenant {transaction.Bill.Account.Tenant.Id}");
+                _logger.LogWarning(
+                    $"User id {userId} did not have permissions to create transaction for tenant {transaction.Bill.Account.Tenant.Id}");
                 return Forbid();
             }
 
