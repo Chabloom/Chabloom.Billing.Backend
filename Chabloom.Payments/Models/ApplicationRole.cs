@@ -17,9 +17,6 @@ namespace Chabloom.Payments.Models
         [Required]
         public string Name { get; set; }
 
-        [Required]
-        public Account Account { get; set; }
-
         public List<ApplicationUser> Users { get; set; }
 
         #region Auditing
