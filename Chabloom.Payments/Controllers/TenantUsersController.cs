@@ -220,40 +220,25 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Find the specified tenantUser
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, id)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to access tenant user {id}");
+                return Forbid();
+            }
+
+            // Find the specified tenant user
             var tenantUser = await _context.TenantUsers
-                .Include(x => x.Tenant)
-                .ThenInclude(x => x.Users)
-                .ThenInclude(x => x.Role)
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (tenantUser == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown tenant user {id}");
                 return NotFound();
-            }
-
-            // Ensure the current user belongs to the tenant
-            if (!tenantUser.Tenant.Users
-                .Select(x => x.UserId)
-                .Contains(userId))
-            {
-                _logger.LogWarning($"User id {userId} did not belong to tenant {tenantUser.Tenant.Id}");
-                return Forbid();
-            }
-
-            // Ensure the current user is a tenant admin or manager
-            var curTenantUser = tenantUser.Tenant.Users
-                .FirstOrDefault(x => x.UserId == userId);
-            if (curTenantUser != null &&
-                curTenantUser.Role.Name != "Admin" &&
-                curTenantUser.Role.Name != "Manager")
-            {
-                _logger.LogWarning(
-                    $"User id {userId} did not have permissions to update tenant user for tenant {tenantUser.Tenant.Id}");
-                return Forbid();
             }
 
             // Update the tenant user
@@ -309,10 +294,20 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, viewModel.Id)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to create tenant users");
+                return Forbid();
+            }
+
             // Create the new tenant user
             var tenantUser = new TenantUser
             {
-                UserId = userId,
+                UserId = viewModel.UserId,
                 Tenant = await _context.Tenants
                     .FirstOrDefaultAsync(x => x.Id == viewModel.Tenant)
                     .ConfigureAwait(false),
@@ -336,27 +331,6 @@ namespace Chabloom.Payments.Controllers
             {
                 _logger.LogWarning($"Specified tenant role {viewModel.Role} could not be found");
                 return BadRequest();
-            }
-
-            // Ensure the current user belongs to the tenant
-            if (!tenantUser.Tenant.Users
-                .Select(x => x.UserId)
-                .Contains(userId))
-            {
-                _logger.LogWarning($"User id {userId} did not belong to tenant {tenantUser.Tenant.Id}");
-                return Forbid();
-            }
-
-            // Ensure the current user is a tenant admin or manager
-            var curTenantUser = tenantUser.Tenant.Users
-                .FirstOrDefault(x => x.UserId == userId);
-            if (curTenantUser != null &&
-                curTenantUser.Role.Name != "Admin" &&
-                curTenantUser.Role.Name != "Manager")
-            {
-                _logger.LogWarning(
-                    $"User id {userId} did not have permissions to create tenant user for tenant {tenantUser.Tenant.Id}");
-                return Forbid();
             }
 
             await _context.TenantUsers.AddAsync(tenantUser)
@@ -391,37 +365,25 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Find the specified account if the user has access to it
+            // Ensure the user is authorized at the requested level
+            // TODO: Role-Based Access
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, id)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to delete tenant user {id}");
+                return Forbid();
+            }
+
+            // Find the specified tenant user
             var tenantUser = await _context.TenantUsers
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (tenantUser == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
-                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
+                _logger.LogWarning($"User id {userId} attempted to delete unknown tenant user {id}");
                 return NotFound();
-            }
-
-            // Ensure the current user belongs to the tenant
-            if (!tenantUser.Tenant.Users
-                .Select(x => x.UserId)
-                .Contains(userId))
-            {
-                _logger.LogWarning($"User id {userId} did not belong to tenant {tenantUser.Tenant.Id}");
-                return Forbid();
-            }
-
-            // Ensure the current user is a tenant admin or manager
-            var curTenantUser = tenantUser.Tenant.Users
-                .FirstOrDefault(x => x.UserId == userId);
-            if (curTenantUser != null &&
-                curTenantUser.Role.Name != "Admin" &&
-                curTenantUser.Role.Name != "Manager")
-            {
-                _logger.LogWarning(
-                    $"User id {userId} did not have permissions to disable tenant user for tenant {tenantUser.Tenant.Id}");
-                return Forbid();
             }
 
             // Disable the tenant user
