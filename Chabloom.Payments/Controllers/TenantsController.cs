@@ -76,6 +76,7 @@ namespace Chabloom.Payments.Controllers
                 // Add tenants where the user is assigned to the account
                 userTenants.AddRange(userAccounts
                     .Select(x => x.Tenant)
+                    .Where(x => !userTenants.Select(y => y.Id).Contains(x.Id))
                     .Select(x => new TenantViewModel
                     {
                         Id = x.Id,
@@ -84,7 +85,6 @@ namespace Chabloom.Payments.Controllers
 
                 // Select all distinct tenants
                 viewModels = userTenants
-                    .Distinct()
                     .ToList();
             }
             else
