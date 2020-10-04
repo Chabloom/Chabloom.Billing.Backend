@@ -1,8 +1,7 @@
 trigger:
 - master
 
-pool:
-  vmImage: 'ubuntu-latest'
+pool: default
 
 variables:
   buildConfiguration: 'Release'
