@@ -31,19 +31,19 @@ namespace Chabloom.Payments
                     Configuration.GetConnectionString("DefaultConnection")));
 
             // Get the public address for the current environment
-            var accountsPublicAddress = System.Environment.GetEnvironmentVariable("ACCOUNTS_PUBLIC_ADDRESS");
+            var accountsBackendAddress = System.Environment.GetEnvironmentVariable("ACCOUNTS_BACKEND_ADDRESS");
             var paymentsPublicAddress = System.Environment.GetEnvironmentVariable("PAYMENTS_PUBLIC_ADDRESS");
-            if (string.IsNullOrEmpty(accountsPublicAddress) ||
+            if (string.IsNullOrEmpty(accountsBackendAddress) ||
                 string.IsNullOrEmpty(paymentsPublicAddress))
             {
-                accountsPublicAddress = "http://localhost:3000";
+                accountsBackendAddress = "http://localhost:5001";
                 paymentsPublicAddress = "http://localhost:3001";
             }
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = accountsPublicAddress;
+                    options.Authority = accountsBackendAddress;
                     options.Audience = "Chabloom.Payments";
                 });
 
