@@ -1,6 +1,5 @@
 // Copyright 2020 Chabloom LC. All rights reserved.
 
-using System;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.OpenApi.Models;
 
 namespace Chabloom.Payments
 {
@@ -33,19 +31,19 @@ namespace Chabloom.Payments
                     Configuration.GetConnectionString("DefaultConnection")));
 
             // Get the public address for the current environment
-            var frontendPublicAddress = System.Environment.GetEnvironmentVariable("FRONTEND_PUBLIC_ADDRESS");
-            var jwtPublicAddress = System.Environment.GetEnvironmentVariable("JWT_PUBLIC_ADDRESS");
-            if (string.IsNullOrEmpty(frontendPublicAddress) ||
-                string.IsNullOrEmpty(jwtPublicAddress))
+            var accountsPublicAddress = System.Environment.GetEnvironmentVariable("ACCOUNTS_PUBLIC_ADDRESS");
+            var paymentsPublicAddress = System.Environment.GetEnvironmentVariable("PAYMENTS_PUBLIC_ADDRESS");
+            if (string.IsNullOrEmpty(accountsPublicAddress) ||
+                string.IsNullOrEmpty(paymentsPublicAddress))
             {
-                frontendPublicAddress = "http://localhost:3000";
-                jwtPublicAddress = "https://localhost:44303";
+                accountsPublicAddress = "http://localhost:3000";
+                paymentsPublicAddress = "http://localhost:3001";
             }
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = jwtPublicAddress;
+                    options.Authority = accountsPublicAddress;
                     options.Audience = "Chabloom.Payments";
                 });
 
@@ -58,57 +56,22 @@ namespace Chabloom.Payments
                 });
             });
 
-            services.AddControllers();
-
             services.AddScoped<IValidator, Validator>();
 
-            if (Environment.IsDevelopment())
-            {
-                // Setup development CORS
-                services.AddCors(options =>
-                {
-                    options.AddPolicy("Development",
-                        builder =>
-                        {
-                            builder.WithOrigins(frontendPublicAddress);
-                            builder.WithOrigins("http://localhost:3001");
-                            builder.AllowAnyMethod();
-                            builder.AllowAnyHeader();
-                            builder.AllowCredentials();
-                        });
-                });
+            services.AddControllers();
 
-                // Setup generated OpenAPI documentation
-                services.AddSwaggerGen(options =>
-                {
-                    options.SwaggerDoc("v1", new OpenApiInfo
-                    {
-                        Title = "Chabloom Payments",
-                        Description = "Chabloom Payments v1 API",
-                        Version = "v1"
-                    });
-                    options.AddSecurityDefinition("openid", new OpenApiSecurityScheme
-                    {
-                        Type = SecuritySchemeType.OpenIdConnect,
-                        OpenIdConnectUrl = new Uri($"{jwtPublicAddress}/.well-known/openid-configuration")
-                    });
-                });
-            }
-            else
+            // Setup CORS
+            services.AddCors(options =>
             {
-                // Setup production CORS
-                services.AddCors(options =>
-                {
-                    options.AddPolicy("Production",
-                        builder =>
-                        {
-                            builder.WithOrigins(frontendPublicAddress);
-                            builder.AllowAnyMethod();
-                            builder.AllowAnyHeader();
-                            builder.AllowCredentials();
-                        });
-                });
-            }
+                options.AddPolicy("CORS",
+                    builder =>
+                    {
+                        builder.WithOrigins(paymentsPublicAddress);
+                        builder.AllowAnyMethod();
+                        builder.AllowAnyHeader();
+                        builder.AllowCredentials();
+                    });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -118,17 +81,9 @@ namespace Chabloom.Payments
             {
                 app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
-                app.UseCors("Development");
-                app.UseSwagger(options => options.RouteTemplate = "/swagger/{documentName}/chabloom-payments-api.json");
-                app.UseSwaggerUI(options =>
-                {
-                    options.SwaggerEndpoint("/swagger/v1/chabloom-payments-api.json", "Chabloom Payments v1 API");
-                });
             }
-            else
-            {
-                app.UseCors("Production");
-            }
+
+            app.UseCors("CORS");
 
             app.UseHttpsRedirection();
 
