@@ -54,6 +54,11 @@ namespace Chabloom.Payments
                     policy.RequireAuthenticatedUser();
                     policy.RequireClaim("scope", "Chabloom.Payments");
                 });
+                options.AddPolicy("IpcScope", policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.RequireClaim("scope", "Chabloom.Payments.IPC");
+                });
             });
 
             services.AddScoped<IValidator, Validator>();
