@@ -79,14 +79,13 @@ namespace Chabloom.Payments
             // Add the CORS policy
             services.AddCors(options =>
             {
-                options.AddPolicy("CORS",
-                    builder =>
-                    {
-                        builder.WithOrigins(corsOrigins.ToArray());
-                        builder.AllowAnyMethod();
-                        builder.AllowAnyHeader();
-                        builder.AllowCredentials();
-                    });
+                options.AddDefaultPolicy(builder =>
+                {
+                    builder.WithOrigins(corsOrigins.ToArray());
+                    builder.AllowAnyMethod();
+                    builder.AllowAnyHeader();
+                    builder.AllowCredentials();
+                });
             });
 
             services.AddApplicationInsightsTelemetry();
@@ -103,7 +102,7 @@ namespace Chabloom.Payments
                 app.UseDatabaseErrorPage();
             }
 
-            app.UseCors("CORS");
+            app.UseCors();
 
             app.UseHttpsRedirection();
 
