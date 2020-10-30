@@ -1,5 +1,6 @@
 // Copyright 2020 Chabloom LC. All rights reserved.
 
+using System.Collections.Generic;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -63,15 +64,25 @@ namespace Chabloom.Payments
 
             services.AddScoped<IValidator, Validator>();
 
-            services.AddControllers();
-
-            // Setup CORS
+            // Get CORS origins
+            var corsOrigins = new List<string>
+            {
+                paymentsPublicAddress
+            };
+            // Add development origins if required
+            if (Environment.IsDevelopment())
+            {
+                corsOrigins.Add("http://localhost:3000");
+                corsOrigins.Add("http://localhost:3001");
+                corsOrigins.Add("http://localhost:3002");
+            }
+            // Add the CORS policy
             services.AddCors(options =>
             {
                 options.AddPolicy("CORS",
                     builder =>
                     {
-                        builder.WithOrigins(paymentsPublicAddress);
+                        builder.WithOrigins(corsOrigins.ToArray());
                         builder.AllowAnyMethod();
                         builder.AllowAnyHeader();
                         builder.AllowCredentials();
@@ -79,6 +90,8 @@ namespace Chabloom.Payments
             });
 
             services.AddApplicationInsightsTelemetry();
+
+            services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
