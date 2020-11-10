@@ -27,5 +27,8 @@ namespace Chabloom.Payments.ViewModels.PaymentSchedule
         public DateTime BeginDate { get; set; }
 
         public DateTime EndDate { get; set; }
+
+        [Required]
+        public Guid Account { get; set; }
     }
 }
