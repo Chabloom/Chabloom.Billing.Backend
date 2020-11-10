@@ -22,16 +22,14 @@ namespace Chabloom.Payments.Data
 
         public DbSet<ApplicationUser> ApplicationUsers { get; set; }
 
-        public DbSet<Bill> Bills { get; set; }
-
-        public DbSet<Schedule> Schedules { get; set; }
-
         public DbSet<Tenant> Tenants { get; set; }
 
         public DbSet<TenantRole> TenantRoles { get; set; }
 
         public DbSet<TenantUser> TenantUsers { get; set; }
 
-        public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+
+        public DbSet<PaymentSchedule> PaymentSchedules { get; set; }
     }
 }

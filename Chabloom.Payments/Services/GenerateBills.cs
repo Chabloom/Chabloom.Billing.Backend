@@ -21,25 +21,24 @@ namespace Chabloom.Payments.Services
         public async Task Run()
         {
             // Get enabled bill schedules that do not have a bill in the future
-            var schedules = await _context.Schedules
+            var schedules = await _context.PaymentSchedules
                 .Include(x => x.Account)
-                .ThenInclude(x => x.Bills)
                 .Where(x => !x.Disabled)
                 .ToListAsync()
                 .ConfigureAwait(false);
 
             // TODO: Account for end of year and end of month
             var newBills = (from schedule in schedules
-                let dueDates = schedule.Account.Bills
+                let dueDates = schedule.Payments
                     .Where(x => x.DueDate >= DateTime.UtcNow.Date)
                 where !dueDates.Any()
-                select new Bill
+                select new Payment
                 {
                     Name = $"{schedule.Name}",
                     Amount = schedule.Amount,
-                    DueDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, schedule.DayDue),
+                    DueDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, schedule.Day),
                     Account = schedule.Account,
-                    Schedule = schedule,
+                    PaymentSchedule = schedule,
                     CreatedUser = Guid.Empty,
                     UpdatedUser = Guid.Empty,
                     DisabledUser = Guid.Empty

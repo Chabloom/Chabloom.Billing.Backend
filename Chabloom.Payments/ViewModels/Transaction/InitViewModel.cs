@@ -3,24 +3,22 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Payments.ViewModels
+namespace Chabloom.Payments.ViewModels.Transaction
 {
-    public class TransactionViewModel
+    public class InitViewModel
     {
-        public Guid Id { get; set; }
-
         [Required]
+        [MaxLength(255)]
         public string Name { get; set; }
-
-        [Required]
-        public string ExternalId { get; set; }
 
         [Required]
         public decimal Amount { get; set; }
 
         [Required]
-        public Guid Bill { get; set; }
+        [MaxLength(255)]
+        public string Currency { get; set; }
 
-        public Guid Account { get; set; }
+        [Required]
+        public Guid CreatedUser { get; set; }
     }
 }

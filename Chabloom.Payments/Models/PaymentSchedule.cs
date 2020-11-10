@@ -1,19 +1,20 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Chabloom.Payments.Models
 {
-    [Table("PaymentsSchedules")]
-    public class Schedule
+    public class PaymentSchedule
     {
         [Required]
         [Key]
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
+        [MaxLength(255)]
         public string Name { get; set; }
 
         [Required]
@@ -21,13 +22,33 @@ namespace Chabloom.Payments.Models
         public decimal Amount { get; set; }
 
         [Required]
-        public int DayDue { get; set; }
+        [MaxLength(255)]
+        public string Currency { get; set; }
 
         [Required]
-        public int Interval { get; set; }
+        public int Day { get; set; }
+
+        [Required]
+        public int MonthInterval { get; set; }
+
+        [Required]
+        [Column(TypeName = "date")]
+        public DateTime BeginDate { get; set; } = DateTime.MinValue;
+
+        [Required]
+        [Column(TypeName = "date")]
+        public DateTime EndDate { get; set; } = DateTime.MaxValue;
 
         [Required]
         public Account Account { get; set; }
+
+        public IList<Payment> Payments { get; set; }
+
+        #region Transaction
+
+        public Guid TransactionScheduleId { get; set; }
+
+        #endregion
 
         #region Auditing
 

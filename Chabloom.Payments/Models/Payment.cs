@@ -6,8 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Chabloom.Payments.Models
 {
-    [Table("PaymentsTransactions")]
-    public class Transaction
+    public class Payment
     {
         [Required]
         [Key]
@@ -17,14 +16,32 @@ namespace Chabloom.Payments.Models
         public string Name { get; set; }
 
         [Required]
-        public string ExternalId { get; set; }
-
-        [Required]
         [Column(TypeName = "decimal(18, 2)")]
         public decimal Amount { get; set; }
 
         [Required]
-        public Bill Bill { get; set; }
+        [MaxLength(255)]
+        public string Currency { get; set; }
+
+        [Required]
+        [Column(TypeName = "date")]
+        public DateTime DueDate { get; set; }
+
+        [Required]
+        public bool Complete { get; set; }
+
+        [Required]
+        public Account Account { get; set; }
+
+        public PaymentSchedule PaymentSchedule { get; set; }
+
+        #region Transaction
+
+        public Guid TransactionId { get; set; }
+
+        public Guid TransactionScheduleId { get; set; }
+
+        #endregion
 
         #region Auditing
 

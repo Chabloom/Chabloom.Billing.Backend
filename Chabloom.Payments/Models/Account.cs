@@ -7,7 +7,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Chabloom.Payments.Models
 {
-    [Table("PaymentsAccounts")]
     public class Account
     {
         [Required]
@@ -26,9 +25,9 @@ namespace Chabloom.Payments.Models
         [Required]
         public Tenant Tenant { get; set; }
 
-        public List<Bill> Bills { get; set; }
+        public List<Payment> Payments { get; set; }
 
-        public List<Schedule> Schedules { get; set; }
+        public List<PaymentSchedule> PaymentSchedules { get; set; }
 
         public List<AccountUser> Users { get; set; }
 
