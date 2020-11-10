@@ -28,7 +28,7 @@ namespace Chabloom.Payments.Models
         public DateTime DueDate { get; set; }
 
         [Required]
-        public bool Complete { get; set; }
+        public bool Complete { get; set; } = false;
 
         [Required]
         public Account Account { get; set; }
