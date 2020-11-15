@@ -23,7 +23,7 @@ namespace Chabloom.Payments.Models
 
         [Required]
         [MaxLength(255)]
-        public string Currency { get; set; }
+        public string Currency { get; set; } = "USD";
 
         [Required]
         public int Day { get; set; }

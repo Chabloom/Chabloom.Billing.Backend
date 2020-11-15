@@ -17,7 +17,6 @@ namespace Chabloom.Payments.ViewModels.Payment
         [Required]
         public decimal Amount { get; set; }
 
-        [Required]
         [MaxLength(255)]
         public string Currency { get; set; }
 

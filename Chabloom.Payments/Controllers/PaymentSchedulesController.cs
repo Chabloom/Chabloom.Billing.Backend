@@ -348,7 +348,6 @@ namespace Chabloom.Payments.Controllers
             {
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
-                Currency = viewModel.Currency,
                 Day = viewModel.Day,
                 MonthInterval = viewModel.MonthInterval,
                 BeginDate = viewModel.BeginDate,
@@ -358,6 +357,12 @@ namespace Chabloom.Payments.Controllers
                 UpdatedUser = Guid.Empty,
                 DisabledUser = Guid.Empty
             };
+
+            // Optional currency specification
+            if (!string.IsNullOrEmpty(viewModel.Currency))
+            {
+                paymentSchedule.Currency = viewModel.Currency;
+            }
 
             await _context.PaymentSchedules.AddAsync(paymentSchedule)
                 .ConfigureAwait(false);

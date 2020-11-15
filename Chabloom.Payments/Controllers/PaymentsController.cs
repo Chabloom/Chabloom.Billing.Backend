@@ -335,13 +335,18 @@ namespace Chabloom.Payments.Controllers
             {
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
-                Currency = viewModel.Currency,
                 DueDate = viewModel.DueDate,
                 Account = account,
                 CreatedUser = userId,
                 UpdatedUser = Guid.Empty,
                 DisabledUser = Guid.Empty
             };
+
+            // Optional currency specification
+            if (!string.IsNullOrEmpty(viewModel.Currency))
+            {
+                payment.Currency = viewModel.Currency;
+            }
 
             await _context.Payments.AddAsync(payment)
                 .ConfigureAwait(false);
