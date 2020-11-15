@@ -100,6 +100,7 @@ namespace Chabloom.Payments.Controllers
                         Name = x.Name,
                         Amount = x.Amount,
                         Currency = x.Currency,
+                        DueDate = x.DueDate,
                         Complete = x.Complete,
                         Account = x.Account.Id,
                         TransactionSchedule = x.TransactionScheduleId
@@ -117,6 +118,7 @@ namespace Chabloom.Payments.Controllers
                         Name = x.Name,
                         Amount = x.Amount,
                         Currency = x.Currency,
+                        DueDate = x.DueDate,
                         Complete = x.Complete,
                         Account = x.Account.Id,
                         TransactionSchedule = x.TransactionScheduleId
@@ -161,6 +163,7 @@ namespace Chabloom.Payments.Controllers
                     Name = x.Name,
                     Amount = x.Amount,
                     Currency = x.Currency,
+                    DueDate = x.DueDate,
                     Complete = x.Complete,
                     Account = x.Account.Id,
                     TransactionSchedule = x.TransactionScheduleId
