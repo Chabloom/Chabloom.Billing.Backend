@@ -73,8 +73,6 @@ namespace Chabloom.Payments
             if (Environment.IsDevelopment())
             {
                 corsOrigins.Add("http://localhost:3000");
-                corsOrigins.Add("http://localhost:3001");
-                corsOrigins.Add("http://localhost:3002");
             }
             // Add the CORS policy
             services.AddCors(options =>
@@ -99,7 +97,6 @@ namespace Chabloom.Payments
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseDatabaseErrorPage();
             }
 
             app.UseCors();
