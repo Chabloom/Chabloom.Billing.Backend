@@ -130,7 +130,7 @@ namespace Chabloom.Payments.Controllers
             return Ok(viewModels);
         }
 
-        [HttpGet]
+        [HttpGet("TenantAccount")]
         [AllowAnonymous]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
