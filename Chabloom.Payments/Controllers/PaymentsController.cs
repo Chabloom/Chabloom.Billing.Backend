@@ -38,62 +38,127 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<PaymentViewModel>>> GetPayments(Guid? accountId)
+        public async Task<ActionResult<IEnumerable<PaymentViewModel>>> GetPayments(Guid? accountId, Guid? tenantId,
+            string accountNumber)
         {
-            // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(sid))
+            if (string.IsNullOrEmpty(accountNumber))
             {
-                _logger.LogWarning("User attempted call without an sid");
-                return Forbid();
-            }
+                // Get the current user sid
+                var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+                if (string.IsNullOrEmpty(sid))
+                {
+                    _logger.LogWarning("User attempted call without an sid");
+                    return Forbid();
+                }
 
-            // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out var userId))
-            {
-                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
-                return Forbid();
-            }
+                // Ensure the user id can be parsed
+                if (!Guid.TryParse(sid, out var userId))
+                {
+                    _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                    return Forbid();
+                }
 
-            // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            bool userAuthorized;
-            if (accountId != null)
-            {
-                userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId.Value)
+                // Ensure the user is authorized at the requested level
+                // TODO: Role-Based Access
+                bool userAuthorized;
+                if (accountId != null)
+                {
+                    userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId.Value)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                        .ConfigureAwait(false);
+                }
+
+                if (!userAuthorized)
+                {
+                    _logger.LogWarning($"User id {userId} was not authorized to access payments");
+                    return Forbid();
+                }
+
+                // Get all payments
+                var payments = await _context.Payments
+                    // Include the account
+                    .Include(x => x.Account)
+                    // Ensure the payment has not been deleted
+                    .Where(x => !x.Disabled)
+                    .ToListAsync()
                     .ConfigureAwait(false);
+                if (payments == null || !payments.Any())
+                {
+                    return new List<PaymentViewModel>();
+                }
+
+                List<PaymentViewModel> viewModels;
+                if (accountId != null)
+                {
+                    // Filter payments by account id
+                    viewModels = payments
+                        .Where(x => x.Account.Id == accountId)
+                        .Select(x => new PaymentViewModel
+                        {
+                            Id = x.Id,
+                            Name = x.Name,
+                            Amount = x.Amount,
+                            Currency = x.Currency,
+                            DueDate = x.DueDate,
+                            Complete = x.Complete,
+                            Account = x.Account.Id,
+                            TransactionSchedule = x.TransactionScheduleId
+                        })
+                        .Distinct()
+                        .ToList();
+                }
+                else
+                {
+                    // Do not filter payments
+                    viewModels = payments
+                        .Select(x => new PaymentViewModel
+                        {
+                            Id = x.Id,
+                            Name = x.Name,
+                            Amount = x.Amount,
+                            Currency = x.Currency,
+                            DueDate = x.DueDate,
+                            Complete = x.Complete,
+                            Account = x.Account.Id,
+                            TransactionSchedule = x.TransactionScheduleId
+                        })
+                        .Distinct()
+                        .ToList();
+                }
+
+                return Ok(viewModels);
             }
             else
             {
-                userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                // The tenant id must be specified to lookup the account number
+                if (tenantId == null)
+                {
+                    return new List<PaymentViewModel>();
+                }
+
+                // Get all payments for the specified account number
+                var payments = await _context.Payments
+                    // Include the account and tenant
+                    .Include(x => x.Account)
+                    .ThenInclude(x => x.Tenant)
+                    // Get payments only for the specified tenant
+                    .Where(x => x.Account.Tenant.Id == tenantId)
+                    // Get payments only for the specified account number
+                    .Where(x => x.Account.ExternalId == accountNumber)
+                    // Ensure the payment has not been deleted
+                    .Where(x => !x.Disabled)
+                    .ToListAsync()
                     .ConfigureAwait(false);
-            }
+                if (payments == null || !payments.Any())
+                {
+                    return new List<PaymentViewModel>();
+                }
 
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to access payments");
-                return Forbid();
-            }
-
-            // Get all payments
-            var payments = await _context.Payments
-                // Include the account
-                .Include(x => x.Account)
-                // Ensure the payment has not been deleted
-                .Where(x => !x.Disabled)
-                .ToListAsync()
-                .ConfigureAwait(false);
-            if (payments == null || !payments.Any())
-            {
-                return new List<PaymentViewModel>();
-            }
-
-            List<PaymentViewModel> viewModels;
-            if (accountId != null)
-            {
-                // Filter payments by account id
-                viewModels = payments
-                    .Where(x => x.Account.Id == accountId)
+                var viewModels = payments
                     .Select(x => new PaymentViewModel
                     {
                         Id = x.Id,
@@ -107,27 +172,9 @@ namespace Chabloom.Payments.Controllers
                     })
                     .Distinct()
                     .ToList();
-            }
-            else
-            {
-                // Do not filter payments
-                viewModels = payments
-                    .Select(x => new PaymentViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name,
-                        Amount = x.Amount,
-                        Currency = x.Currency,
-                        DueDate = x.DueDate,
-                        Complete = x.Complete,
-                        Account = x.Account.Id,
-                        TransactionSchedule = x.TransactionScheduleId
-                    })
-                    .Distinct()
-                    .ToList();
-            }
 
-            return Ok(viewModels);
+                return Ok(viewModels);
+            }
         }
 
         [HttpGet("{id}")]
