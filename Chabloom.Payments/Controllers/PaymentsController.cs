@@ -240,6 +240,44 @@ namespace Chabloom.Payments.Controllers
             return Ok(viewModel);
         }
 
+        [HttpGet("Demo/{id}")]
+        [AllowAnonymous]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        public async Task<ActionResult<Payment>> GetPaymentDemo(Guid id)
+        {
+            // Find the specified payment
+            var viewModel = await _context.Payments
+                // Include the account
+                .Include(x => x.Account)
+                // Ensure the payment has not been deleted
+                .Where(x => !x.Disabled)
+                .Select(x => new PaymentViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Amount = x.Amount,
+                    Currency = x.Currency,
+                    DueDate = x.DueDate,
+                    Complete = x.Complete,
+                    Account = x.Account.Id,
+                    TransactionSchedule = x.TransactionScheduleId
+                })
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (viewModel == null)
+            {
+                _logger.LogWarning($"User attempted to access unknown payment {id}");
+                return NotFound();
+            }
+
+            // Log the operation
+            _logger.LogInformation($"User read payment {viewModel.Id}");
+
+            return Ok(viewModel);
+        }
+
         [HttpPut("{id}")]
         [ProducesResponseType(204)]
         [ProducesResponseType(400)]
@@ -312,6 +350,70 @@ namespace Chabloom.Payments.Controllers
 
             // Log the operation
             _logger.LogInformation($"User {userId} updated payment {payment.Id}");
+
+            // Build the ret view model
+            var retViewModel = new PaymentViewModel
+            {
+                Id = payment.Id,
+                Name = payment.Name,
+                Amount = payment.Amount,
+                Currency = payment.Currency,
+                DueDate = payment.DueDate,
+                Complete = payment.Complete,
+                Account = payment.Account.Id
+            };
+
+            return Ok(retViewModel);
+        }
+
+        [HttpPut("Demo/{id}")]
+        [AllowAnonymous]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<PaymentViewModel>> PutPaymentDemo(Guid id, UpdateViewModel viewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (viewModel == null || id != viewModel.Id)
+            {
+                return BadRequest();
+            }
+
+            var payment = await _context.Payments
+                // Include the account and tenant
+                .Include(x => x.Account)
+                .ThenInclude(x => x.Tenant)
+                // Don't return deleted items
+                .Where(x => !x.Disabled)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (payment == null)
+            {
+                _logger.LogWarning($"User attempted to update unknown payment {id}");
+                return NotFound();
+            }
+
+            // Update the payment
+            payment.Name = viewModel.Name;
+            payment.Amount = viewModel.Amount;
+            payment.Currency = viewModel.Currency;
+            payment.DueDate = viewModel.DueDate;
+            payment.Complete = viewModel.Complete;
+            payment.UpdatedUser = Guid.Empty;
+            payment.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(payment);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            // Log the operation
+            _logger.LogInformation($"User updated payment {payment.Id}");
 
             // Build the ret view model
             var retViewModel = new PaymentViewModel
