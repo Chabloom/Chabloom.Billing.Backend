@@ -38,10 +38,10 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<PaymentViewModel>>> GetPayments(Guid? accountId)
+        public async Task<ActionResult<IEnumerable<PaymentViewModel>>> GetPayments(Guid accountId)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -56,19 +56,8 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            bool userAuthorized;
-            if (accountId != null)
-            {
-                userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId.Value)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
-                    .ConfigureAwait(false);
-            }
-
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId)
+                .ConfigureAwait(false);
             if (!userAuthorized)
             {
                 _logger.LogWarning($"User id {userId} was not authorized to access payments");
@@ -77,9 +66,7 @@ namespace Chabloom.Payments.Controllers
 
             // Get all payments
             var payments = await _context.Payments
-                // Include the account
-                .Include(x => x.Account)
-                // Ensure the payment has not been deleted
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -88,78 +75,7 @@ namespace Chabloom.Payments.Controllers
                 return new List<PaymentViewModel>();
             }
 
-            List<PaymentViewModel> viewModels;
-            if (accountId != null)
-            {
-                // Filter payments by account id
-                viewModels = payments
-                    .Where(x => x.Account.Id == accountId)
-                    .Select(x => new PaymentViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name,
-                        Amount = x.Amount,
-                        Currency = x.Currency,
-                        DueDate = x.DueDate,
-                        Complete = x.Complete,
-                        Account = x.Account.Id,
-                        TransactionSchedule = x.TransactionScheduleId
-                    })
-                    .Distinct()
-                    .ToList();
-            }
-            else
-            {
-                // Do not filter payments
-                viewModels = payments
-                    .Select(x => new PaymentViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name,
-                        Amount = x.Amount,
-                        Currency = x.Currency,
-                        DueDate = x.DueDate,
-                        Complete = x.Complete,
-                        Account = x.Account.Id,
-                        TransactionSchedule = x.TransactionScheduleId
-                    })
-                    .Distinct()
-                    .ToList();
-            }
-
-            return Ok(viewModels);
-        }
-
-        [HttpGet("TenantAccount")]
-        [AllowAnonymous]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<PaymentViewModel>>> GetPayments(string accountNumber, Guid tenantId)
-        {
-            if (string.IsNullOrEmpty(accountNumber))
-            {
-                return BadRequest("Tenant and account must both be specified");
-            }
-
-            // Get all payments for the specified account number
-            var payments = await _context.Payments
-                // Include the account and tenant
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                // Get payments only for the specified tenant
-                .Where(x => x.Account.Tenant.Id == tenantId)
-                // Get payments only for the specified account number
-                .Where(x => x.Account.ExternalId == accountNumber)
-                // Ensure the payment has not been deleted
-                .Where(x => !x.Disabled)
-                .ToListAsync()
-                .ConfigureAwait(false);
-            if (payments == null || !payments.Any())
-            {
-                return new List<PaymentViewModel>();
-            }
-
+            // Convert to view models
             var viewModels = payments
                 .Select(x => new PaymentViewModel
                 {
@@ -168,9 +84,8 @@ namespace Chabloom.Payments.Controllers
                     Amount = x.Amount,
                     Currency = x.Currency,
                     DueDate = x.DueDate,
-                    Complete = x.Complete,
-                    Account = x.Account.Id,
-                    TransactionSchedule = x.TransactionScheduleId
+                    TransactionId = x.TransactionId,
+                    AccountId = x.AccountId
                 })
                 .Distinct()
                 .ToList();
@@ -185,7 +100,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<ActionResult<Payment>> GetPayment(Guid id)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -201,9 +116,7 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified payment
             var viewModel = await _context.Payments
-                // Include the account
-                .Include(x => x.Account)
-                // Ensure the payment has not been deleted
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .Select(x => new PaymentViewModel
                 {
@@ -212,9 +125,8 @@ namespace Chabloom.Payments.Controllers
                     Amount = x.Amount,
                     Currency = x.Currency,
                     DueDate = x.DueDate,
-                    Complete = x.Complete,
-                    Account = x.Account.Id,
-                    TransactionSchedule = x.TransactionScheduleId
+                    TransactionId = x.TransactionId,
+                    AccountId = x.AccountId
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -225,8 +137,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.Account)
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.AccountId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
@@ -240,51 +151,13 @@ namespace Chabloom.Payments.Controllers
             return Ok(viewModel);
         }
 
-        [HttpGet("Demo/{id}")]
-        [AllowAnonymous]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        public async Task<ActionResult<Payment>> GetPaymentDemo(Guid id)
-        {
-            // Find the specified payment
-            var viewModel = await _context.Payments
-                // Include the account
-                .Include(x => x.Account)
-                // Ensure the payment has not been deleted
-                .Where(x => !x.Disabled)
-                .Select(x => new PaymentViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Amount = x.Amount,
-                    Currency = x.Currency,
-                    DueDate = x.DueDate,
-                    Complete = x.Complete,
-                    Account = x.Account.Id,
-                    TransactionSchedule = x.TransactionScheduleId
-                })
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
-            if (viewModel == null)
-            {
-                _logger.LogWarning($"User attempted to access unknown payment {id}");
-                return NotFound();
-            }
-
-            // Log the operation
-            _logger.LogInformation($"User read payment {viewModel.Id}");
-
-            return Ok(viewModel);
-        }
-
         [HttpPut("{id}")]
         [ProducesResponseType(204)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<PaymentViewModel>> PutPayment(Guid id, UpdateViewModel viewModel)
+        public async Task<IActionResult> PutPayment(Guid id, PaymentViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -297,7 +170,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -312,10 +185,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             var payment = await _context.Payments
-                // Include the account and tenant
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                // Don't return deleted items
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -326,12 +196,11 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckTenantAccessAsync(userId, payment.Account.Tenant.Id)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to create payments");
+                _logger.LogWarning($"User id {userId} was not authorized to update payment {id}");
                 return Forbid();
             }
 
@@ -340,7 +209,6 @@ namespace Chabloom.Payments.Controllers
             payment.Amount = viewModel.Amount;
             payment.Currency = viewModel.Currency;
             payment.DueDate = viewModel.DueDate;
-            payment.Complete = viewModel.Complete;
             payment.UpdatedUser = userId;
             payment.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
@@ -351,83 +219,7 @@ namespace Chabloom.Payments.Controllers
             // Log the operation
             _logger.LogInformation($"User {userId} updated payment {payment.Id}");
 
-            // Build the ret view model
-            var retViewModel = new PaymentViewModel
-            {
-                Id = payment.Id,
-                Name = payment.Name,
-                Amount = payment.Amount,
-                Currency = payment.Currency,
-                DueDate = payment.DueDate,
-                Complete = payment.Complete,
-                Account = payment.Account.Id
-            };
-
-            return Ok(retViewModel);
-        }
-
-        [HttpPut("Demo/{id}")]
-        [AllowAnonymous]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<PaymentViewModel>> PutPaymentDemo(Guid id, UpdateViewModel viewModel)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (viewModel == null || id != viewModel.Id)
-            {
-                return BadRequest();
-            }
-
-            var payment = await _context.Payments
-                // Include the account and tenant
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                // Don't return deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
-            if (payment == null)
-            {
-                _logger.LogWarning($"User attempted to update unknown payment {id}");
-                return NotFound();
-            }
-
-            // Update the payment
-            payment.Name = viewModel.Name;
-            payment.Amount = viewModel.Amount;
-            payment.Currency = viewModel.Currency;
-            payment.DueDate = viewModel.DueDate;
-            payment.Complete = viewModel.Complete;
-            payment.UpdatedUser = Guid.Empty;
-            payment.UpdatedTimestamp = DateTimeOffset.UtcNow;
-
-            _context.Update(payment);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
-            // Log the operation
-            _logger.LogInformation($"User updated payment {payment.Id}");
-
-            // Build the ret view model
-            var retViewModel = new PaymentViewModel
-            {
-                Id = payment.Id,
-                Name = payment.Name,
-                Amount = payment.Amount,
-                Currency = payment.Currency,
-                DueDate = payment.DueDate,
-                Complete = payment.Complete,
-                Account = payment.Account.Id
-            };
-
-            return Ok(retViewModel);
+            return NoContent();
         }
 
         [HttpPost]
@@ -435,7 +227,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<PaymentViewModel>> PostPayment(InitViewModel viewModel)
+        public async Task<ActionResult<PaymentViewModel>> PostPayment(PaymentViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -448,7 +240,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -465,7 +257,7 @@ namespace Chabloom.Payments.Controllers
             // Find the specified account
             var account = await _context.Accounts
                 .Include(x => x.Tenant)
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                .FirstOrDefaultAsync(x => x.Id == viewModel.AccountId)
                 .ConfigureAwait(false);
             if (account == null)
             {
@@ -474,7 +266,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckTenantAccessAsync(userId, account.Tenant.Id)
                 .ConfigureAwait(false);
             if (!userAuthorized)
@@ -490,9 +281,7 @@ namespace Chabloom.Payments.Controllers
                 Amount = viewModel.Amount,
                 DueDate = viewModel.DueDate,
                 Account = account,
-                CreatedUser = userId,
-                UpdatedUser = Guid.Empty,
-                DisabledUser = Guid.Empty
+                CreatedUser = userId
             };
 
             // Optional currency specification
@@ -509,19 +298,9 @@ namespace Chabloom.Payments.Controllers
             // Log the operation
             _logger.LogInformation($"User {userId} created payment {payment.Id}");
 
-            // Build the ret view model
-            var retViewModel = new PaymentViewModel
-            {
-                Id = payment.Id,
-                Name = payment.Name,
-                Amount = payment.Amount,
-                Currency = payment.Currency,
-                DueDate = payment.DueDate,
-                Complete = payment.Complete,
-                Account = payment.Account.Id
-            };
+            viewModel.Id = payment.Id;
 
-            return CreatedAtAction("GetPayment", new {id = retViewModel.Id}, retViewModel);
+            return CreatedAtAction("GetPayment", new {id = viewModel.Id}, viewModel);
         }
 
         [HttpDelete("{id}")]
@@ -532,7 +311,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<IActionResult> DeletePayment(Guid id)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -548,9 +327,9 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified payment
             var payment = await _context.Payments
-                // Include the account and tenant
+                // Include the account
                 .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -561,8 +340,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, payment.Account.Tenant.Id)
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, payment.Account.TenantId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {

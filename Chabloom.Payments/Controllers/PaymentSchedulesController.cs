@@ -38,10 +38,10 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<PaymentScheduleViewModel>>> GetPaymentSchedules(Guid? accountId)
+        public async Task<ActionResult<IEnumerable<PaymentScheduleViewModel>>> GetPaymentSchedules(Guid accountId)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -56,19 +56,8 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            bool userAuthorized;
-            if (accountId != null)
-            {
-                userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId.Value)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
-                    .ConfigureAwait(false);
-            }
-
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId)
+                .ConfigureAwait(false);
             if (!userAuthorized)
             {
                 _logger.LogWarning($"User id {userId} was not authorized to access payment schedules");
@@ -77,9 +66,7 @@ namespace Chabloom.Payments.Controllers
 
             // Get all payment schedules
             var paymentSchedules = await _context.PaymentSchedules
-                // Include the account
-                .Include(x => x.Account)
-                // Ensure the payment schedule has not been deleted
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -88,48 +75,23 @@ namespace Chabloom.Payments.Controllers
                 return new List<PaymentScheduleViewModel>();
             }
 
-            List<PaymentScheduleViewModel> viewModels;
-            if (accountId != null)
-            {
-                // Filter payment schedules by account id
-                viewModels = paymentSchedules
-                    .Where(x => x.Account.Id == accountId)
-                    .Select(x => new PaymentScheduleViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name,
-                        Amount = x.Amount,
-                        Currency = x.Currency,
-                        Day = x.Day,
-                        MonthInterval = x.MonthInterval,
-                        BeginDate = x.BeginDate,
-                        EndDate = x.EndDate,
-                        Account = x.Account.Id,
-                        TransactionSchedule = x.TransactionScheduleId
-                    })
-                    .Distinct()
-                    .ToList();
-            }
-            else
-            {
-                // Do not filter payment schedules
-                viewModels = paymentSchedules
-                    .Select(x => new PaymentScheduleViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name,
-                        Amount = x.Amount,
-                        Currency = x.Currency,
-                        Day = x.Day,
-                        MonthInterval = x.MonthInterval,
-                        BeginDate = x.BeginDate,
-                        EndDate = x.EndDate,
-                        Account = x.Account.Id,
-                        TransactionSchedule = x.TransactionScheduleId
-                    })
-                    .Distinct()
-                    .ToList();
-            }
+            // Convert to view models
+            var viewModels = paymentSchedules
+                .Select(x => new PaymentScheduleViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Amount = x.Amount,
+                    Currency = x.Currency,
+                    Day = x.Day,
+                    MonthInterval = x.MonthInterval,
+                    BeginDate = x.BeginDate,
+                    EndDate = x.EndDate,
+                    TransactionScheduleId = x.TransactionScheduleId,
+                    AccountId = x.AccountId
+                })
+                .Distinct()
+                .ToList();
 
             return Ok(viewModels);
         }
@@ -141,7 +103,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<ActionResult<PaymentSchedule>> GetPaymentSchedule(Guid id)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -157,9 +119,7 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified payment schedule
             var viewModel = await _context.PaymentSchedules
-                // Include the account
-                .Include(x => x.Account)
-                // Ensure the payment schedule has not been deleted
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .Select(x => new PaymentScheduleViewModel
                 {
@@ -171,8 +131,8 @@ namespace Chabloom.Payments.Controllers
                     MonthInterval = x.MonthInterval,
                     BeginDate = x.BeginDate,
                     EndDate = x.EndDate,
-                    Account = x.Account.Id,
-                    TransactionSchedule = x.TransactionScheduleId
+                    TransactionScheduleId = x.TransactionScheduleId,
+                    AccountId = x.AccountId
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -183,8 +143,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.Account)
+            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.AccountId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
@@ -204,7 +163,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<PaymentScheduleViewModel>> PutPaymentSchedule(Guid id, UpdateViewModel viewModel)
+        public async Task<IActionResult> PutPaymentSchedule(Guid id, PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -217,7 +176,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -232,10 +191,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             var paymentSchedule = await _context.PaymentSchedules
-                // Include the account and tenant
-                .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
-                // Don't return deleted items
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -246,12 +202,11 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckTenantAccessAsync(userId, paymentSchedule.Account.Tenant.Id)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to create payments");
+                _logger.LogWarning($"User id {userId} was not authorized to update payment schedule {id}");
                 return Forbid();
             }
 
@@ -273,21 +228,7 @@ namespace Chabloom.Payments.Controllers
             // Log the operation
             _logger.LogInformation($"User {userId} updated payment schedule {paymentSchedule.Id}");
 
-            // Build the ret view model
-            var retViewModel = new PaymentScheduleViewModel
-            {
-                Id = paymentSchedule.Id,
-                Name = paymentSchedule.Name,
-                Amount = paymentSchedule.Amount,
-                Currency = paymentSchedule.Currency,
-                Day = paymentSchedule.Day,
-                MonthInterval = paymentSchedule.MonthInterval,
-                BeginDate = paymentSchedule.BeginDate,
-                EndDate = paymentSchedule.EndDate,
-                Account = paymentSchedule.Account.Id
-            };
-
-            return Ok(retViewModel);
+            return NoContent();
         }
 
         [HttpPost]
@@ -295,7 +236,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(InitViewModel viewModel)
+        public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -308,7 +249,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -325,7 +266,7 @@ namespace Chabloom.Payments.Controllers
             // Find the specified account
             var account = await _context.Accounts
                 .Include(x => x.Tenant)
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Account)
+                .FirstOrDefaultAsync(x => x.Id == viewModel.AccountId)
                 .ConfigureAwait(false);
             if (account == null)
             {
@@ -334,7 +275,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckTenantAccessAsync(userId, account.Tenant.Id)
                 .ConfigureAwait(false);
             if (!userAuthorized)
@@ -353,9 +293,7 @@ namespace Chabloom.Payments.Controllers
                 BeginDate = viewModel.BeginDate,
                 EndDate = viewModel.EndDate,
                 Account = account,
-                CreatedUser = userId,
-                UpdatedUser = Guid.Empty,
-                DisabledUser = Guid.Empty
+                CreatedUser = userId
             };
 
             // Optional currency specification
@@ -372,21 +310,9 @@ namespace Chabloom.Payments.Controllers
             // Log the operation
             _logger.LogInformation($"User {userId} created payment schedule {paymentSchedule.Id}");
 
-            // Build the ret view model
-            var retViewModel = new PaymentScheduleViewModel
-            {
-                Id = paymentSchedule.Id,
-                Name = paymentSchedule.Name,
-                Amount = paymentSchedule.Amount,
-                Currency = paymentSchedule.Currency,
-                Day = paymentSchedule.Day,
-                MonthInterval = paymentSchedule.MonthInterval,
-                BeginDate = paymentSchedule.BeginDate,
-                EndDate = paymentSchedule.EndDate,
-                Account = paymentSchedule.Account.Id
-            };
+            viewModel.Id = paymentSchedule.Id;
 
-            return CreatedAtAction("GetPaymentSchedule", new {id = retViewModel.Id}, retViewModel);
+            return CreatedAtAction("GetPaymentSchedule", new {id = viewModel.Id}, viewModel);
         }
 
         [HttpDelete("{id}")]
@@ -397,7 +323,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<IActionResult> DeletePaymentSchedule(Guid id)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -413,9 +339,9 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified payment schedule
             var paymentSchedule = await _context.PaymentSchedules
-                // Include the account and tenant
+                // Include the account
                 .Include(x => x.Account)
-                .ThenInclude(x => x.Tenant)
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
@@ -426,8 +352,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, paymentSchedule.Account.Tenant.Id)
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, paymentSchedule.Account.TenantId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {

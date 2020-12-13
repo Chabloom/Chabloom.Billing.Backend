@@ -31,9 +31,9 @@ namespace Chabloom.Payments.ViewModels.PaymentSchedule
 
         public DateTime EndDate { get; set; }
 
-        [Required]
-        public Guid Account { get; set; }
+        public Guid TransactionScheduleId { get; set; }
 
-        public Guid TransactionSchedule { get; set; }
+        [Required]
+        public Guid AccountId { get; set; }
     }
 }

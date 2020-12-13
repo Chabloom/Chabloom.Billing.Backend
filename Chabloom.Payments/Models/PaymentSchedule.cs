@@ -39,16 +39,15 @@ namespace Chabloom.Payments.Models
         [Column(TypeName = "date")]
         public DateTime EndDate { get; set; } = DateTime.MaxValue;
 
+        public Guid TransactionScheduleId { get; set; }
+
+        [Required]
+        public Guid AccountId { get; set; }
+
         [Required]
         public Account Account { get; set; }
 
         public IList<Payment> Payments { get; set; }
-
-        #region Transaction
-
-        public Guid TransactionScheduleId { get; set; }
-
-        #endregion
 
         #region Auditing
 
@@ -59,19 +58,19 @@ namespace Chabloom.Payments.Models
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public Guid UpdatedUser { get; set; }
+        public Guid UpdatedUser { get; set; } = Guid.Empty;
 
         [Required]
-        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.MinValue;
 
         [Required]
         public bool Disabled { get; set; } = false;
 
         [Required]
-        public Guid DisabledUser { get; set; }
+        public Guid DisabledUser { get; set; } = Guid.Empty;
 
         [Required]
-        public DateTimeOffset DisabledTimestamp { get; set; }
+        public DateTimeOffset DisabledTimestamp { get; set; } = DateTimeOffset.MinValue;
 
         #endregion
     }
