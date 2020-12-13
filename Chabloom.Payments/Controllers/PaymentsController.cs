@@ -35,37 +35,15 @@ namespace Chabloom.Payments.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<PaymentViewModel>>> GetPayments(Guid accountId)
         {
-            // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(sid))
-            {
-                _logger.LogWarning("User attempted call without an sid");
-                return Forbid();
-            }
-
-            // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out var userId))
-            {
-                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
-                return Forbid();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to access payments");
-                return Forbid();
-            }
-
             // Get all payments
             var payments = await _context.Payments
+                .Where(x => x.AccountId == accountId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync()

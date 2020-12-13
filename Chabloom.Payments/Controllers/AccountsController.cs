@@ -66,6 +66,7 @@ namespace Chabloom.Payments.Controllers
 
             // Get all accounts the user is authorized to view
             var accounts = await _context.Accounts
+                .Where(x => x.TenantId == tenantId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync()
@@ -204,6 +205,36 @@ namespace Chabloom.Payments.Controllers
             {
                 _logger.LogWarning($"User id {userId} was not authorized to access account {id}");
                 return Forbid();
+            }
+
+            return Ok(viewModel);
+        }
+
+        [HttpGet("Reference/{id}")]
+        [AllowAnonymous]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        public async Task<ActionResult<AccountViewModel>> GetAccountReference(string id)
+        {
+            // Find the specified account if the user has access to it
+            var viewModel = await _context.Accounts
+                // Don't include deleted items
+                .Where(x => !x.Disabled)
+                .Select(x => new AccountViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Address = x.Address,
+                    ReferenceId = x.ReferenceId,
+                    TenantId = x.TenantId
+                })
+                .FirstOrDefaultAsync(x => x.ReferenceId == id)
+                .ConfigureAwait(false);
+            if (viewModel == null)
+            {
+                _logger.LogWarning($"User attempted to access unknown account {id}");
+                return NotFound();
             }
 
             return Ok(viewModel);
