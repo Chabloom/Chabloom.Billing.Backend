@@ -39,7 +39,7 @@ namespace Chabloom.Payments.Models
         [Column(TypeName = "date")]
         public DateTime EndDate { get; set; } = DateTime.MaxValue;
 
-        public Guid TransactionScheduleId { get; set; }
+        public string TransactionScheduleId { get; set; }
 
         [Required]
         public Guid AccountId { get; set; }
