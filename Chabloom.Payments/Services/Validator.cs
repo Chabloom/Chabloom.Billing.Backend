@@ -53,7 +53,6 @@ namespace Chabloom.Payments.Services
 
             // Check if the user exists at the application level
             var applicationUsers = await _context.ApplicationUsers
-                .Where(x => !x.Disabled)
                 .Select(x => x.UserId)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -87,7 +86,6 @@ namespace Chabloom.Payments.Services
 
             // Check if the user exists at the application level
             var applicationUsers = await _context.ApplicationUsers
-                .Where(x => !x.Disabled)
                 .Select(x => x.UserId)
                 .ToListAsync()
                 .ConfigureAwait(false);
@@ -104,7 +102,6 @@ namespace Chabloom.Payments.Services
         {
             // Check if the user exists at the application level
             var applicationUsers = await _context.ApplicationUsers
-                .Where(x => !x.Disabled)
                 .Select(x => x.UserId)
                 .ToListAsync()
                 .ConfigureAwait(false);
