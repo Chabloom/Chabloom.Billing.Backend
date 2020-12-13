@@ -93,18 +93,21 @@ namespace Chabloom.Payments.Controllers
                 return new List<TenantViewModel>();
             }
 
-            // Filter tenants by user id
-            var authorizedTenants = tenants
-                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
-                .Select(x => new TenantViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name
-                })
-                .ToList();
-            if (!authorizedTenants.Any())
+            var authorizedTenants = tenants;
+
+            // Check if the user is authorized at the application level
+            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
             {
-                return new List<TenantViewModel>();
+                // Filter tenants by user id
+                authorizedTenants = tenants
+                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                    .ToList();
+                if (!authorizedTenants.Any())
+                {
+                    return new List<TenantViewModel>();
+                }
             }
 
             // Convert to view models
