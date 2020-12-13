@@ -3,7 +3,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Payments.ViewModels.Payment
+namespace Chabloom.Payments.ViewModels
 {
     public class PaymentViewModel
     {

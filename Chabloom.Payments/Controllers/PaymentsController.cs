@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
 using Chabloom.Payments.Services;
-using Chabloom.Payments.ViewModels.Payment;
+using Chabloom.Payments.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
