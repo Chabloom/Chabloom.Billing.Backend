@@ -215,10 +215,11 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> GetAccountReference(string id)
+        public async Task<ActionResult<AccountViewModel>> GetAccountReference(string id, Guid tenantId)
         {
             // Find the specified account if the user has access to it
             var viewModel = await _context.Accounts
+                .Where(x => x.TenantId == tenantId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .Select(x => new AccountViewModel
