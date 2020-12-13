@@ -10,22 +10,26 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Chabloom.Payments.Data.Migrations.ApplicationDb
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20201112031801_ApplicationDbMigration1")]
+    [Migration("20201213180906_ApplicationDbMigration1")]
     partial class ApplicationDbMigration1
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "3.1.10")
+                .UseIdentityColumns()
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
-                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+                .HasAnnotation("ProductVersion", "5.0.1");
 
             modelBuilder.Entity("Chabloom.Payments.Models.Account", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTimeOffset>("CreatedTimestamp")
                         .HasColumnType("datetimeoffset");
@@ -42,15 +46,11 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.Property<Guid>("DisabledUser")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ExternalId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PrimaryAddress")
+                    b.Property<string>("ReferenceId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -70,47 +70,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.ToTable("Accounts");
                 });
 
-            modelBuilder.Entity("Chabloom.Payments.Models.AccountRole", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("CreatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("CreatedUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("Disabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset>("DisabledTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("DisabledUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset>("UpdatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("UpdatedUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AccountId");
-
-                    b.ToTable("AccountRoles");
-                });
-
             modelBuilder.Entity("Chabloom.Payments.Models.AccountUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -126,24 +85,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.Property<Guid>("CreatedUser")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("Disabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset>("DisabledTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("DisabledUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("UpdatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("UpdatedUser")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
@@ -151,45 +92,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
 
                     b.HasIndex("AccountId");
 
-                    b.HasIndex("RoleId");
-
                     b.ToTable("AccountUsers");
-                });
-
-            modelBuilder.Entity("Chabloom.Payments.Models.ApplicationRole", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("CreatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("CreatedUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("Disabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset>("DisabledTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("DisabledUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset>("UpdatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("UpdatedUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ApplicationRoles");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.ApplicationUser", b =>
@@ -204,30 +107,10 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.Property<Guid>("CreatedUser")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("Disabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset>("DisabledTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("DisabledUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("UpdatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("UpdatedUser")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
 
                     b.ToTable("ApplicationUsers");
                 });
@@ -242,10 +125,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<bool>("Complete")
-                        .HasColumnType("bit");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTimeOffset>("CreatedTimestamp")
                         .HasColumnType("datetimeoffset");
@@ -255,8 +135,8 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasColumnType("nvarchar(255)")
-                        .HasMaxLength(255);
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<bool>("Disabled")
                         .HasColumnType("bit");
@@ -274,14 +154,11 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("PaymentScheduleId")
+                    b.Property<Guid>("PaymentScheduleId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("TransactionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("TransactionScheduleId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("TransactionId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTimeOffset>("UpdatedTimestamp")
                         .HasColumnType("datetimeoffset");
@@ -308,7 +185,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18, 2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("BeginDate")
                         .HasColumnType("date");
@@ -321,8 +198,8 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasColumnType("nvarchar(255)")
-                        .HasMaxLength(255);
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<int>("Day")
                         .HasColumnType("int");
@@ -344,11 +221,11 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(255)")
-                        .HasMaxLength(255);
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
-                    b.Property<Guid>("TransactionScheduleId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("TransactionScheduleId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTimeOffset>("UpdatedTimestamp")
                         .HasColumnType("datetimeoffset");
@@ -399,47 +276,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.ToTable("Tenants");
                 });
 
-            modelBuilder.Entity("Chabloom.Payments.Models.TenantRole", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("CreatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("CreatedUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("Disabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset>("DisabledTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("DisabledUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("UpdatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("UpdatedUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("TenantRoles");
-                });
-
             modelBuilder.Entity("Chabloom.Payments.Models.TenantUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -452,33 +288,13 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.Property<Guid>("CreatedUser")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("Disabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset>("DisabledTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("DisabledUser")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("TenantId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("UpdatedTimestamp")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("UpdatedUser")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
 
                     b.HasIndex("TenantId");
 
@@ -492,15 +308,8 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
 
-            modelBuilder.Entity("Chabloom.Payments.Models.AccountRole", b =>
-                {
-                    b.HasOne("Chabloom.Payments.Models.Account", "Account")
-                        .WithMany("Roles")
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.AccountUser", b =>
@@ -511,16 +320,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Chabloom.Payments.Models.AccountRole", "Role")
-                        .WithMany("Users")
-                        .HasForeignKey("RoleId");
-                });
-
-            modelBuilder.Entity("Chabloom.Payments.Models.ApplicationUser", b =>
-                {
-                    b.HasOne("Chabloom.Payments.Models.ApplicationRole", "Role")
-                        .WithMany("Users")
-                        .HasForeignKey("RoleId");
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.Payment", b =>
@@ -533,7 +333,13 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
 
                     b.HasOne("Chabloom.Payments.Models.PaymentSchedule", "PaymentSchedule")
                         .WithMany("Payments")
-                        .HasForeignKey("PaymentScheduleId");
+                        .HasForeignKey("PaymentScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("PaymentSchedule");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.PaymentSchedule", b =>
@@ -543,28 +349,40 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
 
-            modelBuilder.Entity("Chabloom.Payments.Models.TenantRole", b =>
-                {
-                    b.HasOne("Chabloom.Payments.Models.Tenant", "Tenant")
-                        .WithMany("Roles")
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.TenantUser", b =>
                 {
-                    b.HasOne("Chabloom.Payments.Models.TenantRole", "Role")
-                        .WithMany("Users")
-                        .HasForeignKey("RoleId");
-
                     b.HasOne("Chabloom.Payments.Models.Tenant", "Tenant")
                         .WithMany("Users")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Chabloom.Payments.Models.Account", b =>
+                {
+                    b.Navigation("Payments");
+
+                    b.Navigation("PaymentSchedules");
+
+                    b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("Chabloom.Payments.Models.PaymentSchedule", b =>
+                {
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("Chabloom.Payments.Models.Tenant", b =>
+                {
+                    b.Navigation("Accounts");
+
+                    b.Navigation("Users");
                 });
 #pragma warning restore 612, 618
         }
