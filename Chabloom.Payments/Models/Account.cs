@@ -16,10 +16,13 @@ namespace Chabloom.Payments.Models
         public string Name { get; set; }
 
         [Required]
-        public string ExternalId { get; set; }
+        public string Address { get; set; }
 
         [Required]
-        public string PrimaryAddress { get; set; }
+        public string ReferenceId { get; set; }
+
+        [Required]
+        public Guid TenantId { get; set; }
 
         [Required]
         public Tenant Tenant { get; set; }
@@ -30,8 +33,6 @@ namespace Chabloom.Payments.Models
 
         public List<AccountUser> Users { get; set; }
 
-        public List<AccountRole> Roles { get; set; }
-
         #region Auditing
 
         [Required]
@@ -41,19 +42,19 @@ namespace Chabloom.Payments.Models
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public Guid UpdatedUser { get; set; }
+        public Guid UpdatedUser { get; set; } = Guid.Empty;
 
         [Required]
-        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.MinValue;
 
         [Required]
         public bool Disabled { get; set; } = false;
 
         [Required]
-        public Guid DisabledUser { get; set; }
+        public Guid DisabledUser { get; set; } = Guid.Empty;
 
         [Required]
-        public DateTimeOffset DisabledTimestamp { get; set; }
+        public DateTimeOffset DisabledTimestamp { get; set; } = DateTimeOffset.MinValue;
 
         #endregion
     }

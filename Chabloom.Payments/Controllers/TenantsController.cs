@@ -38,66 +38,83 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<TenantViewModel>>> GetTenants(Guid? userId)
+        public async Task<ActionResult<IEnumerable<TenantViewModel>>> GetTenants()
         {
             // Find all tenants
             var tenants = await _context.Tenants
-                // Include the users
-                .Include(x => x.Users)
-                // Include the account users
-                .Include(x => x.Accounts)
-                .ThenInclude(x => x.Users)
-                // Ensure the tenant has not been deleted
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync()
                 .ConfigureAwait(false);
 
-            List<TenantViewModel> viewModels;
-            if (userId != null)
+            // Convert to view models
+            var viewModels = tenants
+                .Select(x => new TenantViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name
+                })
+                .ToList();
+
+            return Ok(viewModels);
+        }
+
+        [HttpGet("Authorized")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        public async Task<ActionResult<IEnumerable<TenantViewModel>>> GetTenantsAuthorized()
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(sid))
             {
-                // Filter tenants by user id
-                var userTenants = tenants
-                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId.Value))
-                    .Select(x => new TenantViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name
-                    })
-                    .ToList();
-
-                // Get accounts where the user is assigned
-                var userAccounts = await _context.Accounts
-                    .Include(x => x.Users)
-                    .Include(x => x.Tenant)
-                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId.Value))
-                    .ToListAsync()
-                    .ConfigureAwait(false);
-
-                // Add tenants where the user is assigned to the account
-                userTenants.AddRange(userAccounts
-                    .Select(x => x.Tenant)
-                    .Where(x => !userTenants.Select(y => y.Id).Contains(x.Id))
-                    .Select(x => new TenantViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name
-                    }));
-
-                // Select all distinct tenants
-                viewModels = userTenants
-                    .ToList();
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
             }
-            else
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
             {
-                // Do not filter users
-                viewModels = tenants
-                    .Select(x => new TenantViewModel
-                    {
-                        Id = x.Id,
-                        Name = x.Name
-                    })
-                    .ToList();
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
             }
+
+            // Find all tenants
+            var tenants = await _context.Tenants
+                // Include the users
+                .Include(x => x.Users)
+                // Don't include deleted items
+                .Where(x => !x.Disabled)
+                .ToListAsync()
+                .ConfigureAwait(false);
+            if (!tenants.Any())
+            {
+                return new List<TenantViewModel>();
+            }
+
+            // Filter tenants by user id
+            var authorizedTenants = tenants
+                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
+                .Select(x => new TenantViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name
+                })
+                .ToList();
+            if (!authorizedTenants.Any())
+            {
+                return new List<TenantViewModel>();
+            }
+
+            // Convert to view models
+            var viewModels = authorizedTenants
+                .Select(x => new TenantViewModel
+                {
+                    Id = x.Id,
+                    Name = x.Name
+                })
+                .ToList();
 
             return Ok(viewModels);
         }
@@ -109,7 +126,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<ActionResult<TenantViewModel>> GetTenant(Guid id)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -125,7 +142,7 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified tenant
             var viewModel = await _context.Tenants
-                // Ensure the tenant has not been deleted
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .Select(x => new TenantViewModel
                 {
@@ -141,7 +158,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckTenantAccessAsync(userId, id)
                 .ConfigureAwait(false);
             if (!userAuthorized)
@@ -172,7 +188,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -188,23 +204,22 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified tenant if the user has access to it
             var tenant = await _context.Tenants
-                .Include(x => x.Users)
+                // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (tenant == null)
             {
-                // Return 404 even if the item exists to prevent leakage of items
                 _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
                 return NotFound();
             }
 
-            // Ensure the current user belongs to the tenant
-            if (!tenant.Users
-                .Select(x => x.UserId)
-                .Contains(userId))
+            // Ensure the user is authorized at the requested level
+            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
             {
-                _logger.LogWarning($"User id {userId} did not belong to tenant {tenant.Id}");
+                _logger.LogWarning($"User id {userId} was not authorized to update tenant {id}");
                 return Forbid();
             }
 
@@ -216,6 +231,8 @@ namespace Chabloom.Payments.Controllers
             _context.Update(tenant);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
+
+            _logger.LogInformation($"User {userId} updated tenant {id}");
 
             return NoContent();
         }
@@ -238,7 +255,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -252,88 +269,87 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
+            // Ensure the user is authorized at the requested level
+            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to create tenants");
+                return Forbid();
+            }
+
             // Create the new tenant
             var tenant = new Tenant
             {
                 Name = viewModel.Name,
-                CreatedUser = userId,
-                UpdatedUser = userId,
-                DisabledUser = userId
+                CreatedUser = userId
             };
-
-            // Ensure the current user can create tenants
-            var applicationUser = _context.ApplicationUsers
-                .Include(x => x.Role)
-                .FirstOrDefault(x => x.UserId == userId);
-            if (applicationUser != null &&
-                applicationUser.Role.Name != "Admin" &&
-                applicationUser.Role.Name != "Manager")
-            {
-                _logger.LogWarning($"User id {userId} did not have permissions to create tenants");
-                return Forbid();
-            }
 
             await _context.Tenants.AddAsync(tenant)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
-            // Create the tenant roles
-            var roles = new List<TenantRole>
-            {
-                new TenantRole
-                {
-                    Name = "Admin",
-                    Tenant = tenant,
-                    CreatedUser = userId,
-                    UpdatedUser = userId,
-                    DisabledUser = userId
-                },
-                new TenantRole
-                {
-                    Name = "Manager",
-                    Tenant = tenant,
-                    CreatedUser = userId,
-                    UpdatedUser = userId,
-                    DisabledUser = userId
-                },
-                new TenantRole
-                {
-                    Name = "Basic",
-                    Tenant = tenant,
-                    CreatedUser = userId,
-                    UpdatedUser = userId,
-                    DisabledUser = userId
-                }
-            };
-
-            await _context.AddRangeAsync(roles)
-                .ConfigureAwait(false);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
-            // Add the user to the new tenant as an admin
-            var tenantUser = new TenantUser
-            {
-                UserId = userId,
-                Tenant = tenant,
-                Role = await _context.TenantRoles
-                    .Where(x => x.Tenant == tenant)
-                    .FirstOrDefaultAsync(x => x.Name == "Admin")
-                    .ConfigureAwait(false),
-                CreatedUser = userId,
-                UpdatedUser = userId,
-                DisabledUser = userId
-            };
-
-            await _context.TenantUsers.AddAsync(tenantUser)
-                .ConfigureAwait(false);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
             viewModel.Id = tenant.Id;
 
+            _logger.LogInformation($"User {userId} created tenant {tenant.Id}");
+
             return CreatedAtAction("GetTenant", new {id = viewModel.Id}, viewModel);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> DeleteTenant(Guid id)
+        {
+            // Get the current user sid
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Forbid();
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Forbid();
+            }
+
+            // Find the specified tenant if the user has access to it
+            var tenant = await _context.Tenants
+                // Don't include deleted items
+                .Where(x => !x.Disabled)
+                .FirstOrDefaultAsync(x => x.Id == id)
+                .ConfigureAwait(false);
+            if (tenant == null)
+            {
+                _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
+                return NotFound();
+            }
+
+            // Ensure the user is authorized at the requested level
+            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
+                .ConfigureAwait(false);
+            if (!userAuthorized)
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to delete tenants");
+                return Forbid();
+            }
+
+            // Disable the tenant
+            tenant.Disabled = true;
+            tenant.DisabledUser = userId;
+            tenant.DisabledTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(tenant);
+            await _context.SaveChangesAsync()
+                .ConfigureAwait(false);
+
+            return NoContent();
         }
     }
 }
