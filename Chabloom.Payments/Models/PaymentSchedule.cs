@@ -47,8 +47,6 @@ namespace Chabloom.Payments.Models
         [Required]
         public Account Account { get; set; }
 
-        public IList<Payment> Payments { get; set; }
-
         #region Auditing
 
         [Required]

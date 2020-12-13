@@ -35,10 +35,6 @@ namespace Chabloom.Payments.Models
         [Required]
         public Account Account { get; set; }
 
-        public Guid PaymentScheduleId { get; set; }
-
-        public PaymentSchedule PaymentSchedule { get; set; }
-
         #region Auditing
 
         [Required]

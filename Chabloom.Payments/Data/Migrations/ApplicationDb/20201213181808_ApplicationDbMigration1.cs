@@ -111,6 +111,36 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                 });
 
             migrationBuilder.CreateTable(
+                name: "Payments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    DueDate = table.Column<DateTime>(type: "date", nullable: false),
+                    TransactionId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    AccountId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedUser = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CreatedTimestamp = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    UpdatedUser = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UpdatedTimestamp = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    Disabled = table.Column<bool>(type: "bit", nullable: false),
+                    DisabledUser = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    DisabledTimestamp = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Payments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Payments_Accounts_AccountId",
+                        column: x => x.AccountId,
+                        principalTable: "Accounts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "PaymentSchedules",
                 columns: table => new
                 {
@@ -143,43 +173,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "Payments",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Currency = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    DueDate = table.Column<DateTime>(type: "date", nullable: false),
-                    TransactionId = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    AccountId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    PaymentScheduleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedUser = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CreatedTimestamp = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    UpdatedUser = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UpdatedTimestamp = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    Disabled = table.Column<bool>(type: "bit", nullable: false),
-                    DisabledUser = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    DisabledTimestamp = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Payments", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Payments_Accounts_AccountId",
-                        column: x => x.AccountId,
-                        principalTable: "Accounts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Payments_PaymentSchedules_PaymentScheduleId",
-                        column: x => x.PaymentScheduleId,
-                        principalTable: "PaymentSchedules",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.CreateIndex(
                 name: "IX_Accounts_TenantId",
                 table: "Accounts",
@@ -194,11 +187,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                 name: "IX_Payments_AccountId",
                 table: "Payments",
                 column: "AccountId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Payments_PaymentScheduleId",
-                table: "Payments",
-                column: "PaymentScheduleId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PaymentSchedules_AccountId",
@@ -223,10 +211,10 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                 name: "Payments");
 
             migrationBuilder.DropTable(
-                name: "TenantUsers");
+                name: "PaymentSchedules");
 
             migrationBuilder.DropTable(
-                name: "PaymentSchedules");
+                name: "TenantUsers");
 
             migrationBuilder.DropTable(
                 name: "Accounts");

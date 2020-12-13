@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Chabloom.Payments.Data.Migrations.ApplicationDb
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20201213180906_ApplicationDbMigration1")]
+    [Migration("20201213181808_ApplicationDbMigration1")]
     partial class ApplicationDbMigration1
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -154,9 +154,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("PaymentScheduleId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("TransactionId")
                         .HasColumnType("nvarchar(max)");
 
@@ -169,8 +166,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.HasKey("Id");
 
                     b.HasIndex("AccountId");
-
-                    b.HasIndex("PaymentScheduleId");
 
                     b.ToTable("Payments");
                 });
@@ -331,15 +326,7 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Chabloom.Payments.Models.PaymentSchedule", "PaymentSchedule")
-                        .WithMany("Payments")
-                        .HasForeignKey("PaymentScheduleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Account");
-
-                    b.Navigation("PaymentSchedule");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.PaymentSchedule", b =>
@@ -371,11 +358,6 @@ namespace Chabloom.Payments.Data.Migrations.ApplicationDb
                     b.Navigation("PaymentSchedules");
 
                     b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("Chabloom.Payments.Models.PaymentSchedule", b =>
-                {
-                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("Chabloom.Payments.Models.Tenant", b =>
