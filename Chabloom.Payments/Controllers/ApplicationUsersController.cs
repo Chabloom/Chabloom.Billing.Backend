@@ -41,7 +41,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<ActionResult<IEnumerable<ApplicationUserViewModel>>> GetApplicationUsers()
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -56,7 +56,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
@@ -67,10 +66,6 @@ namespace Chabloom.Payments.Controllers
 
             // Get all application users
             var applicationUsers = await _context.ApplicationUsers
-                // Include role
-                .Include(x => x.Role)
-                // Ensure the application user has not been deleted
-                .Where(x => !x.Disabled)
                 .ToListAsync()
                 .ConfigureAwait(false);
             if (applicationUsers == null || !applicationUsers.Any())
@@ -78,14 +73,12 @@ namespace Chabloom.Payments.Controllers
                 return new List<ApplicationUserViewModel>();
             }
 
-            // Return all application users
+            // Convert to view models
             var viewModels = applicationUsers
                 .Select(x => new ApplicationUserViewModel
                 {
                     Id = x.Id,
-                    UserId = x.UserId,
-                    Role = x.Role?.Id ?? Guid.Empty,
-                    RoleName = x.Role?.Name
+                    UserId = x.UserId
                 })
                 .Distinct()
                 .ToList();
@@ -100,7 +93,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<ActionResult<ApplicationUserViewModel>> GetApplicationUser(Guid id)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -116,16 +109,10 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified application user
             var viewModel = await _context.ApplicationUsers
-                // Include role
-                .Include(x => x.Role)
-                // Ensure the application user has not been deleted
-                .Where(x => !x.Disabled)
                 .Select(x => new ApplicationUserViewModel
                 {
                     Id = x.Id,
-                    UserId = x.UserId,
-                    Role = x.Role.Id,
-                    RoleName = x.Role.Name
+                    UserId = x.UserId
                 })
                 .FirstOrDefaultAsync(x => x.UserId == id)
                 .ConfigureAwait(false);
@@ -136,7 +123,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
@@ -146,81 +132,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             return Ok(viewModel);
-        }
-
-        [HttpPut("{id}")]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        [ProducesResponseType(404)]
-        public async Task<IActionResult> PutApplicationUser(Guid id, ApplicationUserViewModel viewModel)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (viewModel == null || id != viewModel.Id)
-            {
-                return BadRequest();
-            }
-
-            // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
-            if (string.IsNullOrEmpty(sid))
-            {
-                _logger.LogWarning("User attempted call without an sid");
-                return Forbid();
-            }
-
-            // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out var userId))
-            {
-                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
-                return Forbid();
-            }
-
-            // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
-            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to access application user {id}");
-                return Forbid();
-            }
-
-            // Find the specified application user
-            var applicationUser = await _context.ApplicationUsers
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
-            if (applicationUser == null)
-            {
-                _logger.LogWarning($"User id {userId} attempted to access unknown application user {id}");
-                return NotFound();
-            }
-
-            // Update the application user
-            applicationUser.Role = await _context.ApplicationRoles
-                .FirstOrDefaultAsync(x => x.Id == viewModel.Role)
-                .ConfigureAwait(false);
-            applicationUser.UpdatedUser = userId;
-            applicationUser.UpdatedTimestamp = DateTimeOffset.UtcNow;
-
-            // Ensure the application role was found
-            if (applicationUser.Role == null)
-            {
-                _logger.LogWarning($"Specified application role {viewModel.Role} could not be found");
-                return BadRequest();
-            }
-
-            _context.Update(applicationUser);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
-            return NoContent();
         }
 
         [HttpPost]
@@ -242,7 +153,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -257,7 +168,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
@@ -270,20 +180,8 @@ namespace Chabloom.Payments.Controllers
             var applicationUser = new ApplicationUser
             {
                 UserId = viewModel.UserId,
-                Role = await _context.ApplicationRoles
-                    .FirstOrDefaultAsync(x => x.Id == viewModel.Role)
-                    .ConfigureAwait(false),
-                CreatedUser = userId,
-                UpdatedUser = userId,
-                DisabledUser = userId
+                CreatedUser = userId
             };
-
-            // Ensure the application role was found
-            if (applicationUser.Role == null)
-            {
-                _logger.LogWarning($"Specified application role {viewModel.Role} could not be found");
-                return BadRequest();
-            }
 
             await _context.ApplicationUsers.AddAsync(applicationUser)
                 .ConfigureAwait(false);
@@ -291,6 +189,8 @@ namespace Chabloom.Payments.Controllers
                 .ConfigureAwait(false);
 
             viewModel.Id = applicationUser.Id;
+
+            _logger.LogInformation($"User {userId} added {viewModel.UserId} to application");
 
             return CreatedAtAction("GetApplicationUser", new {id = viewModel.Id}, viewModel);
         }
@@ -303,7 +203,7 @@ namespace Chabloom.Payments.Controllers
         public async Task<IActionResult> DeleteApplicationUser(Guid id)
         {
             // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier).Value;
+            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(sid))
             {
                 _logger.LogWarning("User attempted call without an sid");
@@ -318,7 +218,6 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            // TODO: Role-Based Access
             var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
@@ -329,8 +228,7 @@ namespace Chabloom.Payments.Controllers
 
             // Find the specified application user
             var applicationUser = await _context.ApplicationUsers
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
+                .FindAsync(id)
                 .ConfigureAwait(false);
             if (applicationUser == null)
             {
@@ -338,14 +236,11 @@ namespace Chabloom.Payments.Controllers
                 return NotFound();
             }
 
-            // Disable the application user
-            applicationUser.Disabled = true;
-            applicationUser.DisabledUser = userId;
-            applicationUser.UpdatedTimestamp = DateTimeOffset.UtcNow;
-
-            _context.Update(applicationUser);
+            _context.Remove(applicationUser);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
+
+            _logger.LogInformation($"User {userId} removed {applicationUser.UserId} from application");
 
             return NoContent();
         }

@@ -14,8 +14,6 @@ namespace Chabloom.Payments.Models
         [Required]
         public Guid UserId { get; set; }
 
-        public ApplicationRole Role { get; set; }
-
         #region Auditing
 
         [Required]
@@ -23,21 +21,6 @@ namespace Chabloom.Payments.Models
 
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
-
-        [Required]
-        public Guid UpdatedUser { get; set; }
-
-        [Required]
-        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
-
-        [Required]
-        public bool Disabled { get; set; } = false;
-
-        [Required]
-        public Guid DisabledUser { get; set; }
-
-        [Required]
-        public DateTimeOffset DisabledTimestamp { get; set; }
 
         #endregion
     }
