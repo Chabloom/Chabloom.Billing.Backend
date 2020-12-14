@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Data;
 using Chabloom.Payments.Models;
@@ -40,18 +39,10 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<IEnumerable<ApplicationUserViewModel>>> GetApplicationUsers()
         {
-            // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(sid))
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (userId == Guid.Empty)
             {
-                _logger.LogWarning("User attempted call without an sid");
-                return Forbid();
-            }
-
-            // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out var userId))
-            {
-                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
             }
 
@@ -92,18 +83,10 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(403)]
         public async Task<ActionResult<ApplicationUserViewModel>> GetApplicationUser(Guid id)
         {
-            // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(sid))
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (userId == Guid.Empty)
             {
-                _logger.LogWarning("User attempted call without an sid");
-                return Forbid();
-            }
-
-            // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out var userId))
-            {
-                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
             }
 
@@ -152,18 +135,10 @@ namespace Chabloom.Payments.Controllers
                 return BadRequest();
             }
 
-            // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(sid))
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (userId == Guid.Empty)
             {
-                _logger.LogWarning("User attempted call without an sid");
-                return Forbid();
-            }
-
-            // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out var userId))
-            {
-                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
             }
 
@@ -202,18 +177,10 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteApplicationUser(Guid id)
         {
-            // Get the current user sid
-            var sid = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(sid))
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (userId == Guid.Empty)
             {
-                _logger.LogWarning("User attempted call without an sid");
-                return Forbid();
-            }
-
-            // Ensure the user id can be parsed
-            if (!Guid.TryParse(sid, out var userId))
-            {
-                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
                 return Forbid();
             }
 

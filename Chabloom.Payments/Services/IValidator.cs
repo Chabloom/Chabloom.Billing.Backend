@@ -1,6 +1,7 @@
 ﻿// Copyright 2020 Chabloom LC. All rights reserved.
 
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace Chabloom.Payments.Services
@@ -29,5 +30,12 @@ namespace Chabloom.Payments.Services
         /// <param name="userId">The user id</param>
         /// <returns>True if the user is authorized, false otherwise</returns>
         public Task<bool> CheckApplicationAccessAsync(Guid userId);
+
+        /// <summary>
+        ///     Validate that a user has a user id
+        /// </summary>
+        /// <param name="user">The claims principal to check</param>
+        /// <returns>The user id or an empty guid on failure</returns>
+        public Guid GetUserId(ClaimsPrincipal user);
     }
 }

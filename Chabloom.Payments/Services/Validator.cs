@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Payments.Controllers;
 using Chabloom.Payments.Data;
@@ -112,6 +113,26 @@ namespace Chabloom.Payments.Services
 
             _logger.LogWarning($"Denied application-level access to user id {userId}");
             return false;
+        }
+
+        public Guid GetUserId(ClaimsPrincipal user)
+        {
+            // Get the current user sid
+            var sid = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(sid))
+            {
+                _logger.LogWarning("User attempted call without an sid");
+                return Guid.Empty;
+            }
+
+            // Ensure the user id can be parsed
+            if (!Guid.TryParse(sid, out var userId))
+            {
+                _logger.LogWarning($"User sid {sid} could not be parsed as Guid");
+                return Guid.Empty;
+            }
+
+            return userId;
         }
     }
 }
