@@ -19,13 +19,13 @@ namespace Chabloom.Payments.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class PaymentSchedulesController : ControllerBase
+    public class BillsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<PaymentSchedulesController> _logger;
+        private readonly ILogger<BillsController> _logger;
         private readonly IValidator _validator;
 
-        public PaymentSchedulesController(ApplicationDbContext context, ILogger<PaymentSchedulesController> logger,
+        public BillsController(ApplicationDbContext context, ILogger<BillsController> logger,
             IValidator validator)
         {
             _context = context;
@@ -34,51 +34,34 @@ namespace Chabloom.Payments.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<PaymentScheduleViewModel>>> GetPaymentSchedules(Guid accountId)
+        public async Task<ActionResult<IEnumerable<BillViewModel>>> GetPayments(Guid accountId)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to access payment schedules");
-                return Forbid();
-            }
-
-            // Get all payment schedules
-            var paymentSchedules = await _context.PaymentSchedules
+            // Get all payments
+            var payments = await _context.Payments
+                .Where(x => x.AccountId == accountId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync()
                 .ConfigureAwait(false);
-            if (paymentSchedules == null || !paymentSchedules.Any())
+            if (payments == null || !payments.Any())
             {
-                return new List<PaymentScheduleViewModel>();
+                return new List<BillViewModel>();
             }
 
             // Convert to view models
-            var viewModels = paymentSchedules
-                .Select(x => new PaymentScheduleViewModel
+            var viewModels = payments
+                .Select(x => new BillViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     Amount = x.Amount,
                     Currency = x.Currency,
-                    Day = x.Day,
-                    MonthInterval = x.MonthInterval,
-                    BeginDate = x.BeginDate,
-                    EndDate = x.EndDate,
-                    TransactionScheduleId = x.TransactionScheduleId,
+                    DueDate = x.DueDate,
+                    TransactionId = x.TransactionId,
                     AccountId = x.AccountId
                 })
                 .Distinct()
@@ -91,7 +74,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<PaymentSchedule>> GetPaymentSchedule(Guid id)
+        public async Task<ActionResult<Payment>> GetPayment(Guid id)
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
@@ -100,28 +83,25 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Find the specified payment schedule
-            var viewModel = await _context.PaymentSchedules
+            // Find the specified payment
+            var viewModel = await _context.Payments
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .Select(x => new PaymentScheduleViewModel
+                .Select(x => new BillViewModel
                 {
                     Id = x.Id,
                     Name = x.Name,
                     Amount = x.Amount,
                     Currency = x.Currency,
-                    Day = x.Day,
-                    MonthInterval = x.MonthInterval,
-                    BeginDate = x.BeginDate,
-                    EndDate = x.EndDate,
-                    TransactionScheduleId = x.TransactionScheduleId,
+                    DueDate = x.DueDate,
+                    TransactionId = x.TransactionId,
                     AccountId = x.AccountId
                 })
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
             if (viewModel == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to access unknown payment schedule {id}");
+                _logger.LogWarning($"User id {userId} attempted to access unknown payment {id}");
                 return NotFound();
             }
 
@@ -130,12 +110,12 @@ namespace Chabloom.Payments.Controllers
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to access payment schedule {id}");
+                _logger.LogWarning($"User id {userId} was not authorized to access payment {id}");
                 return Forbid();
             }
 
             // Log the operation
-            _logger.LogInformation($"User {userId} read payment schedule {viewModel.Id}");
+            _logger.LogInformation($"User {userId} read payment {viewModel.Id}");
 
             return Ok(viewModel);
         }
@@ -146,8 +126,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<PaymentScheduleViewModel>> PutPaymentSchedule(Guid id,
-            PaymentScheduleViewModel viewModel)
+        public async Task<ActionResult<BillViewModel>> PutPayment(Guid id, BillViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -166,56 +145,50 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            var paymentSchedule = await _context.PaymentSchedules
+            var payment = await _context.Payments
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (paymentSchedule == null)
+            if (payment == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to update unknown payment schedule {id}");
+                _logger.LogWarning($"User id {userId} attempted to update unknown payment {id}");
                 return NotFound();
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, paymentSchedule.Account.Tenant.Id)
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, payment.Account.Tenant.Id)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to update payment schedule {id}");
+                _logger.LogWarning($"User id {userId} was not authorized to update payment {id}");
                 return Forbid();
             }
 
-            // Update the payment schedule
-            paymentSchedule.Name = viewModel.Name;
-            paymentSchedule.Amount = viewModel.Amount;
-            paymentSchedule.Currency = viewModel.Currency;
-            paymentSchedule.Day = viewModel.Day;
-            paymentSchedule.MonthInterval = viewModel.MonthInterval;
-            paymentSchedule.BeginDate = viewModel.BeginDate;
-            paymentSchedule.EndDate = viewModel.EndDate;
-            paymentSchedule.UpdatedUser = userId;
-            paymentSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
+            // Update the payment
+            payment.Name = viewModel.Name;
+            payment.Amount = viewModel.Amount;
+            payment.Currency = viewModel.Currency;
+            payment.DueDate = viewModel.DueDate;
+            payment.UpdatedUser = userId;
+            payment.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
-            _context.Update(paymentSchedule);
+            _context.Update(payment);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
             // Log the operation
-            _logger.LogInformation($"User {userId} updated payment schedule {paymentSchedule.Id}");
+            _logger.LogInformation($"User {userId} updated payment {payment.Id}");
 
-            return Ok(new PaymentScheduleViewModel
+            return Ok(new BillViewModel
             {
-                Id = paymentSchedule.Id,
-                Name = paymentSchedule.Name,
-                Amount = paymentSchedule.Amount,
-                Currency = paymentSchedule.Currency,
-                Day = paymentSchedule.Day,
-                MonthInterval = paymentSchedule.MonthInterval,
-                BeginDate = paymentSchedule.BeginDate,
-                EndDate = paymentSchedule.EndDate,
-                TransactionScheduleId = paymentSchedule.TransactionScheduleId,
-                AccountId = paymentSchedule.AccountId
+                Id = payment.Id,
+                Name = payment.Name,
+                Amount = payment.Amount,
+                Currency = payment.Currency,
+                DueDate = payment.DueDate,
+                TransactionId = payment.TransactionId,
+                AccountId = payment.AccountId
             });
         }
 
@@ -224,8 +197,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(
-            PaymentScheduleViewModel viewModel)
+        public async Task<ActionResult<BillViewModel>> PostPayment(BillViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -260,19 +232,16 @@ namespace Chabloom.Payments.Controllers
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to create payment schedules");
+                _logger.LogWarning($"User id {userId} was not authorized to create payments");
                 return Forbid();
             }
 
-            // Create the new payment schedule
-            var paymentSchedule = new PaymentSchedule
+            // Create the new payment
+            var payment = new Payment
             {
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
-                Day = viewModel.Day,
-                MonthInterval = viewModel.MonthInterval,
-                BeginDate = viewModel.BeginDate,
-                EndDate = viewModel.EndDate,
+                DueDate = viewModel.DueDate,
                 Account = account,
                 CreatedUser = userId
             };
@@ -280,20 +249,20 @@ namespace Chabloom.Payments.Controllers
             // Optional currency specification
             if (!string.IsNullOrEmpty(viewModel.Currency))
             {
-                paymentSchedule.Currency = viewModel.Currency;
+                payment.Currency = viewModel.Currency;
             }
 
-            await _context.PaymentSchedules.AddAsync(paymentSchedule)
+            await _context.Payments.AddAsync(payment)
                 .ConfigureAwait(false);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
             // Log the operation
-            _logger.LogInformation($"User {userId} created payment schedule {paymentSchedule.Id}");
+            _logger.LogInformation($"User {userId} created payment {payment.Id}");
 
-            viewModel.Id = paymentSchedule.Id;
+            viewModel.Id = payment.Id;
 
-            return CreatedAtAction("GetPaymentSchedule", new {id = viewModel.Id}, viewModel);
+            return CreatedAtAction("GetPayment", new {id = viewModel.Id}, viewModel);
         }
 
         [HttpDelete("{id}")]
@@ -301,7 +270,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> DeletePaymentSchedule(Guid id)
+        public async Task<IActionResult> DeletePayment(Guid id)
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
@@ -310,35 +279,35 @@ namespace Chabloom.Payments.Controllers
                 return Forbid();
             }
 
-            // Find the specified payment schedule
-            var paymentSchedule = await _context.PaymentSchedules
+            // Find the specified payment
+            var payment = await _context.Payments
                 // Include the account
                 .Include(x => x.Account)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .FirstOrDefaultAsync(x => x.Id == id)
                 .ConfigureAwait(false);
-            if (paymentSchedule == null)
+            if (payment == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to delete unknown payment schedule {id}");
+                _logger.LogWarning($"User id {userId} attempted to delete unknown payment {id}");
                 return NotFound();
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, paymentSchedule.Account.TenantId)
+            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, payment.Account.TenantId)
                 .ConfigureAwait(false);
             if (!userAuthorized)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to delete payment schedule {id}");
+                _logger.LogWarning($"User id {userId} was not authorized to delete payment {id}");
                 return Forbid();
             }
 
-            // Disable the payment schedule
-            paymentSchedule.Disabled = true;
-            paymentSchedule.DisabledUser = userId;
-            paymentSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
+            // Disable the payment
+            payment.Disabled = true;
+            payment.DisabledUser = userId;
+            payment.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
-            _context.Update(paymentSchedule);
+            _context.Update(payment);
             await _context.SaveChangesAsync()
                 .ConfigureAwait(false);
 
