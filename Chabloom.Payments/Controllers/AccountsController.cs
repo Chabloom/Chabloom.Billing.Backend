@@ -128,14 +128,6 @@ namespace Chabloom.Payments.Controllers
             // Filter accounts by user id
             var authorizedAccounts = accounts
                 .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
-                .Select(x => new AccountViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Address = x.Address,
-                    ReferenceId = x.ReferenceId,
-                    TenantId = x.TenantId
-                })
                 .ToList();
             if (!authorizedAccounts.Any())
             {
@@ -143,7 +135,7 @@ namespace Chabloom.Payments.Controllers
             }
 
             // Convert to view models
-            var viewModels = accounts
+            var viewModels = authorizedAccounts
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
