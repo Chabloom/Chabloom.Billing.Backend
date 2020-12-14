@@ -163,7 +163,8 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutPaymentSchedule(Guid id, PaymentScheduleViewModel viewModel)
+        public async Task<ActionResult<PaymentScheduleViewModel>> PutPaymentSchedule(Guid id,
+            PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -228,7 +229,19 @@ namespace Chabloom.Payments.Controllers
             // Log the operation
             _logger.LogInformation($"User {userId} updated payment schedule {paymentSchedule.Id}");
 
-            return NoContent();
+            return Ok(new PaymentScheduleViewModel
+            {
+                Id = paymentSchedule.Id,
+                Name = paymentSchedule.Name,
+                Amount = paymentSchedule.Amount,
+                Currency = paymentSchedule.Currency,
+                Day = paymentSchedule.Day,
+                MonthInterval = paymentSchedule.MonthInterval,
+                BeginDate = paymentSchedule.BeginDate,
+                EndDate = paymentSchedule.EndDate,
+                TransactionScheduleId = paymentSchedule.TransactionScheduleId,
+                AccountId = paymentSchedule.AccountId
+            });
         }
 
         [HttpPost]
@@ -236,7 +249,8 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(PaymentScheduleViewModel viewModel)
+        public async Task<ActionResult<PaymentScheduleViewModel>> PostPaymentSchedule(
+            PaymentScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {

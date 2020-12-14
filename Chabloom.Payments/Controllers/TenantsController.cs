@@ -178,7 +178,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutTenant(Guid id, TenantViewModel viewModel)
+        public async Task<ActionResult<TenantViewModel>> PutTenant(Guid id, TenantViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -237,7 +237,11 @@ namespace Chabloom.Payments.Controllers
 
             _logger.LogInformation($"User {userId} updated tenant {id}");
 
-            return NoContent();
+            return Ok(new TenantViewModel
+            {
+                Id = tenant.Id,
+                Name = tenant.Name
+            });
         }
 
         [HttpPost]

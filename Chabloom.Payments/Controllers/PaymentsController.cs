@@ -135,7 +135,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutPayment(Guid id, PaymentViewModel viewModel)
+        public async Task<ActionResult<PaymentViewModel>> PutPayment(Guid id, PaymentViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -197,7 +197,16 @@ namespace Chabloom.Payments.Controllers
             // Log the operation
             _logger.LogInformation($"User {userId} updated payment {payment.Id}");
 
-            return NoContent();
+            return Ok(new PaymentViewModel
+            {
+                Id = payment.Id,
+                Name = payment.Name,
+                Amount = payment.Amount,
+                Currency = payment.Currency,
+                DueDate = payment.DueDate,
+                TransactionId = payment.TransactionId,
+                AccountId = payment.AccountId
+            });
         }
 
         [HttpPost]

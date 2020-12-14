@@ -239,7 +239,7 @@ namespace Chabloom.Payments.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutAccount(Guid id, AccountViewModel viewModel)
+        public async Task<ActionResult<AccountViewModel>> PutAccount(Guid id, AccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -300,7 +300,14 @@ namespace Chabloom.Payments.Controllers
 
             _logger.LogInformation($"User {userId} updated account {id}");
 
-            return NoContent();
+            return Ok(new AccountViewModel
+            {
+                Id = account.Id,
+                Name = account.Name,
+                Address = account.Address,
+                ReferenceId = account.ReferenceId,
+                TenantId = account.TenantId
+            });
         }
 
         [HttpPost]
