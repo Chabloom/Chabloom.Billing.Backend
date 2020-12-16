@@ -4,7 +4,6 @@ using System;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Chabloom.Payments.Controllers;
 using Chabloom.Payments.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -14,9 +13,9 @@ namespace Chabloom.Payments.Services
     public class Validator : IValidator
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<AccountUsersController> _logger;
+        private readonly ILogger<Validator> _logger;
 
-        public Validator(ApplicationDbContext context, ILogger<AccountUsersController> logger)
+        public Validator(ApplicationDbContext context, ILogger<Validator> logger)
         {
             _context = context;
             _logger = logger;
