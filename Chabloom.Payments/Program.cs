@@ -1,4 +1,4 @@
-// Copyright 2020 Chabloom LC. All rights reserved.
+// Copyright 2020-2021 Chabloom LC. All rights reserved.
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;

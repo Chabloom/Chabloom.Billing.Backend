@@ -1,7 +1,6 @@
-﻿// Copyright 2020 Chabloom LC. All rights reserved.
+﻿// Copyright 2020-2021 Chabloom LC. All rights reserved.
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 

@@ -1,4 +1,4 @@
-// Copyright 2020 Chabloom LC. All rights reserved.
+// Copyright 2020-2021 Chabloom LC. All rights reserved.
 
 using System.Collections.Generic;
 using Chabloom.Payments.Data;
@@ -74,6 +74,7 @@ namespace Chabloom.Payments
             {
                 corsOrigins.Add("http://localhost:3000");
             }
+
             // Add the CORS policy
             services.AddCors(options =>
             {
