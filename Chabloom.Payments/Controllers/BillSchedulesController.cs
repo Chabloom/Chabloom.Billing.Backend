@@ -57,6 +57,7 @@ namespace Chabloom.Payments.Controllers
 
             // Get all payment schedules
             var paymentSchedules = await _context.PaymentSchedules
+                .Where(x => x.AccountId == accountId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync()
