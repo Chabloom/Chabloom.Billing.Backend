@@ -32,19 +32,19 @@ namespace Chabloom.Billing.Backend
                     Configuration.GetConnectionString("DefaultConnection")));
 
             // Get the public address for the current environment
-            var accountsBackendAddress = System.Environment.GetEnvironmentVariable("ACCOUNTS_BACKEND_ADDRESS");
-            var paymentsPublicAddress = System.Environment.GetEnvironmentVariable("PAYMENTS_PUBLIC_ADDRESS");
-            if (string.IsNullOrEmpty(accountsBackendAddress) ||
-                string.IsNullOrEmpty(paymentsPublicAddress))
+            var frontendPublicAddress = System.Environment.GetEnvironmentVariable("BILLING_FRONTEND_ADDRESS");
+            var accountsBackendPublicAddress = System.Environment.GetEnvironmentVariable("ACCOUNTS_BACKEND_ADDRESS");
+            if (string.IsNullOrEmpty(frontendPublicAddress) ||
+                string.IsNullOrEmpty(accountsBackendPublicAddress))
             {
-                accountsBackendAddress = "http://localhost:5001";
-                paymentsPublicAddress = "http://localhost:3001";
+                frontendPublicAddress = "http://localhost:3001";
+                accountsBackendPublicAddress = "http://localhost:5000";
             }
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = accountsBackendAddress;
+                    options.Authority = accountsBackendPublicAddress;
                     options.Audience = "Chabloom.Billing.Backend";
                 });
 
@@ -67,12 +67,15 @@ namespace Chabloom.Billing.Backend
             // Get CORS origins
             var corsOrigins = new List<string>
             {
-                paymentsPublicAddress
+                frontendPublicAddress
             };
             // Add development origins if required
             if (Environment.IsDevelopment())
             {
                 corsOrigins.Add("http://localhost:3000");
+                corsOrigins.Add("http://localhost:3001");
+                corsOrigins.Add("http://localhost:3002");
+                corsOrigins.Add("http://localhost:3003");
             }
 
             // Add the CORS policy
