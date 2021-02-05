@@ -20,6 +20,7 @@ spec:
       labels:
         {{- include "Chabloom.Billing.Backend.selectorLabels" . | nindent 8 }}
     spec:
+      hostNetwork: true
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -29,6 +30,9 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Microk8s"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
