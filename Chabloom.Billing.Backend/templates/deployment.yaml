@@ -20,7 +20,6 @@ spec:
       labels:
         {{- include "Chabloom.Billing.Backend.selectorLabels" . | nindent 8 }}
     spec:
-      hostNetwork: true
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
