@@ -64,11 +64,6 @@ namespace Chabloom.Billing.Backend
                     policy.RequireAuthenticatedUser();
                     policy.RequireClaim("scope", "Chabloom.Billing.Backend");
                 });
-                options.AddPolicy("IpcScope", policy =>
-                {
-                    policy.RequireAuthenticatedUser();
-                    policy.RequireClaim("scope", "Chabloom.Billing.Backend.IPC");
-                });
             });
 
             services.AddScoped<IValidator, Validator>();
