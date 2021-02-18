@@ -37,16 +37,8 @@ namespace Chabloom.Billing.Backend
             if (string.IsNullOrEmpty(frontendPublicAddress) ||
                 string.IsNullOrEmpty(accountsBackendPublicAddress))
             {
-                if (Environment.EnvironmentName == "MicroK8s")
-                {
-                    frontendPublicAddress = "http://localhost:3001";
-                    accountsBackendPublicAddress = "http://chabloom-accounts-backend";
-                }
-                else
-                {
-                    frontendPublicAddress = "http://localhost:3001";
-                    accountsBackendPublicAddress = "http://localhost:5000";
-                }
+                frontendPublicAddress = "http://localhost:3001";
+                accountsBackendPublicAddress = "http://chabloom-accounts-backend";
             }
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -54,7 +46,7 @@ namespace Chabloom.Billing.Backend
                 {
                     options.Authority = accountsBackendPublicAddress;
                     options.Audience = "Chabloom.Billing.Backend";
-                    options.RequireHttpsMetadata = false;
+                    options.RequireHttpsMetadata = !Environment.IsDevelopment();
                 });
 
             services.AddAuthorization(options =>
@@ -68,18 +60,22 @@ namespace Chabloom.Billing.Backend
 
             services.AddScoped<IValidator, Validator>();
 
-            // Get CORS origins
-            var corsOrigins = new List<string>
+            // Setup CORS origins
+            var corsOrigins = new List<string>();
+            if (Environment.IsDevelopment())
             {
-                frontendPublicAddress
-            };
-            // Add development origins if required
-            if (Environment.IsDevelopment() || Environment.EnvironmentName == "MicroK8s")
-            {
+                corsOrigins.Add("http://localhost:3000");
+                corsOrigins.Add("http://localhost:3001");
+                corsOrigins.Add("http://localhost:3002");
+                corsOrigins.Add("http://localhost:3003");
                 corsOrigins.Add("http://billing-dev-1.chabloom.com");
                 corsOrigins.Add("https://billing-dev-1.chabloom.com");
                 corsOrigins.Add("http://billing-uat-1.chabloom.com");
                 corsOrigins.Add("https://billing-uat-1.chabloom.com");
+            }
+            else
+            {
+                corsOrigins.Add("https://billing.chabloom.com");
             }
 
             // Add the CORS policy
