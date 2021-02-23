@@ -44,16 +44,16 @@ ingress:
   enabled: true
   annotations:
     kubernetes.io/ingress.class: public
-    # kubernetes.io/tls-acme: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header X-Forwarded-Proto https;
   hosts:
     - host: billing-api-dev-1.chabloom.com
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+    - secretName: chabloom-billing-backend-tls
+      hosts:
+        - billing-api-dev-1.chabloom.com
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
