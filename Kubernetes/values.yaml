@@ -44,7 +44,8 @@ ingress:
   enabled: true
   annotations:
     kubernetes.io/ingress.class: public
-    nginx.ingress.kubernetes.io/configuration-snippet: more_set_input_headers "X-Forwarded-Proto: https"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_input_headers "X-Forwarded-Proto: https"
     # kubernetes.io/tls-acme: "true"
   hosts:
     - host: billing-api-dev-1.chabloom.com
