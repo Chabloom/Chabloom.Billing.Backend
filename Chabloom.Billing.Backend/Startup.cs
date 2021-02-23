@@ -37,7 +37,7 @@ namespace Chabloom.Billing.Backend
             if (string.IsNullOrEmpty(frontendPublicAddress) ||
                 string.IsNullOrEmpty(accountsBackendPublicAddress))
             {
-                frontendPublicAddress = "http://localhost:3001";
+                frontendPublicAddress = "https://billing-dev-1.chabloom.com";
                 accountsBackendPublicAddress = "http://chabloom-accounts-backend";
             }
 
@@ -68,9 +68,7 @@ namespace Chabloom.Billing.Backend
                 corsOrigins.Add("http://localhost:3001");
                 corsOrigins.Add("http://localhost:3002");
                 corsOrigins.Add("http://localhost:3003");
-                corsOrigins.Add("http://billing-dev-1.chabloom.com");
                 corsOrigins.Add("https://billing-dev-1.chabloom.com");
-                corsOrigins.Add("http://billing-uat-1.chabloom.com");
                 corsOrigins.Add("https://billing-uat-1.chabloom.com");
             }
             else
