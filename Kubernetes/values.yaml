@@ -50,7 +50,7 @@ ingress:
       proxy_set_header X-Forwarded-Proto https;
   hosts:
     - host: billing-api-dev-1.chabloom.com
-  tls: []
+  tls:
     - secretName: chabloom-billing-backend-tls
       hosts:
         - billing-api-dev-1.chabloom.com
