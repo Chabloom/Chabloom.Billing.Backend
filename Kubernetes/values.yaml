@@ -44,7 +44,7 @@ ingress:
   enabled: true
   annotations:
     kubernetes.io/ingress.class: public
-    nginx.org/redirect-to-https: true
+    nginx.org/redirect-to-https: "true"
     nginx.org/location-snippets: |
       add_header X-Forwarded-Proto https;
     # kubernetes.io/tls-acme: "true"
