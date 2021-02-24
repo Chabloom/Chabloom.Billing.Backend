@@ -46,7 +46,7 @@ namespace Chabloom.Billing.Backend
                 string.IsNullOrEmpty(accountsBackendPublicAddress))
             {
                 frontendPublicAddress = "https://billing-dev-1.chabloom.com";
-                accountsBackendPublicAddress = "http://chabloom-accounts-backend";
+                accountsBackendPublicAddress = "https://accounts-api-dev-1.chabloom.com";
             }
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
