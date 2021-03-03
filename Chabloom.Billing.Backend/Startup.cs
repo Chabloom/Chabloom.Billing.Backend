@@ -39,20 +39,10 @@ namespace Chabloom.Billing.Backend
                 options.KnownProxies.Clear();
             });
 
-            // Get the public address for the current environment
-            var frontendPublicAddress = System.Environment.GetEnvironmentVariable("BILLING_FRONTEND_ADDRESS");
-            var accountsBackendPublicAddress = System.Environment.GetEnvironmentVariable("ACCOUNTS_BACKEND_ADDRESS");
-            if (string.IsNullOrEmpty(frontendPublicAddress) ||
-                string.IsNullOrEmpty(accountsBackendPublicAddress))
-            {
-                frontendPublicAddress = "https://billing-dev-1.chabloom.com";
-                accountsBackendPublicAddress = "https://accounts-api-dev-1.chabloom.com";
-            }
-
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = accountsBackendPublicAddress;
+                    options.Authority = "https://accounts-api-dev-1.chabloom.com";
                     options.Audience = "Chabloom.Billing.Backend";
                     options.RequireHttpsMetadata = !Environment.IsDevelopment();
                 });
@@ -72,15 +62,14 @@ namespace Chabloom.Billing.Backend
             var corsOrigins = new List<string>();
             if (Environment.IsDevelopment())
             {
-                corsOrigins.Add("http://localhost:3000");
+                // Allow CORS from billing DEV, UAT, and local environments
                 corsOrigins.Add("http://localhost:3001");
-                corsOrigins.Add("http://localhost:3002");
-                corsOrigins.Add("http://localhost:3003");
                 corsOrigins.Add("https://billing-dev-1.chabloom.com");
                 corsOrigins.Add("https://billing-uat-1.chabloom.com");
             }
             else
             {
+                // Allow CORS from billing PROD environment
                 corsOrigins.Add("https://billing.chabloom.com");
             }
 
