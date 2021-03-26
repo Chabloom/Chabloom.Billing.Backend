@@ -64,6 +64,7 @@ namespace Chabloom.Billing.Backend
             {
                 // Allow CORS from billing DEV, UAT, and local environments
                 corsOrigins.Add("http://localhost:3001");
+                corsOrigins.Add("https://localhost:3001");
                 corsOrigins.Add("https://billing-dev-1.chabloom.com");
                 corsOrigins.Add("https://billing-uat-1.chabloom.com");
             }
