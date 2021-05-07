@@ -88,3 +88,6 @@ tolerations: []
 affinity: {}
 
 aspnetcoreEnvironment: Production
+accountsAuthority: "https://accounts-api.chabloom.com"
+corsOrigins: "https://billing.chabloom.com;"
+redisConfiguration: "redis-master"
