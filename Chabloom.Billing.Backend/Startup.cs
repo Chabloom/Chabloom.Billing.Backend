@@ -38,7 +38,6 @@ namespace Chabloom.Billing.Backend
                 options.KnownProxies.Clear();
             });
 
-            var authority = Environment.GetEnvironmentVariable("ACCOUNTS_AUTHORITY");
             const string audience = "Chabloom.Billing.Backend";
 
             var redisConfiguration = Environment.GetEnvironmentVariable("REDIS_CONFIGURATION");
@@ -52,7 +51,7 @@ namespace Chabloom.Billing.Backend
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = authority;
+                    options.Authority = Environment.GetEnvironmentVariable("ACCOUNTS_BACKEND_ADDRESS");
                     options.Audience = audience;
                 });
 
@@ -68,20 +67,23 @@ namespace Chabloom.Billing.Backend
             services.AddScoped<IValidator, Validator>();
 
             // Load CORS origins
-            var corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS");
-            if (!string.IsNullOrEmpty(corsOrigins))
+            services.AddCors(options =>
             {
-                services.AddCors(options =>
+                options.AddDefaultPolicy(builder =>
                 {
-                    options.AddDefaultPolicy(builder =>
+                    var origins = new[]
                     {
-                        builder.WithOrigins(corsOrigins.Split(';'));
-                        builder.AllowAnyMethod();
-                        builder.AllowAnyHeader();
-                        builder.AllowCredentials();
-                    });
+                        Environment.GetEnvironmentVariable("ACCOUNTS_FRONTEND_ADDRESS"),
+                        Environment.GetEnvironmentVariable("BILLING_FRONTEND_ADDRESS"),
+                        Environment.GetEnvironmentVariable("ECOMMERCE_FRONTEND_ADDRESS"),
+                        Environment.GetEnvironmentVariable("TRANSACTIONS_FRONTEND_ADDRESS")
+                    };
+                    builder.WithOrigins(origins);
+                    builder.AllowAnyMethod();
+                    builder.AllowAnyHeader();
+                    builder.AllowCredentials();
                 });
-            }
+            });
 
             services.AddControllers();
         }

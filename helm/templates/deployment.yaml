@@ -32,12 +32,24 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: {{ .Values.aspnetcoreEnvironment }}
-            - name: ACCOUNTS_AUTHORITY
-              value: {{ .Values.accountsAuthority }}
-            - name: CORS_ORIGINS
-              value: {{ .Values.corsOrigins }}
             - name: REDIS_CONFIGURATION
               value: {{ .Values.redisConfiguration }}
+            - name: ACCOUNTS_FRONTEND_ADDRESS
+              value: {{ .Values.accountsFrontendAddress }}
+            - name: BILLING_FRONTEND_ADDRESS
+              value: {{ .Values.billingFrontendAddress }}
+            - name: ECOMMERCE_FRONTEND_ADDRESS
+              value: {{ .Values.ecommerceFrontendAddress }}
+            - name: TRANSACTIONS_FRONTEND_ADDRESS
+              value: {{ .Values.transactionsFrontendAddress }}
+            - name: ACCOUNTS_BACKEND_ADDRESS
+              value: {{ .Values.accountsBackendAddress }}
+            - name: BILLING_BACKEND_ADDRESS
+              value: {{ .Values.billingBackendAddress }}
+            - name: ECOMMERCE_BACKEND_ADDRESS
+              value: {{ .Values.ecommerceBackendAddress }}
+            - name: TRANSACTIONS_BACKEND_ADDRESS
+              value: {{ .Values.transactionsBackendAddress }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
