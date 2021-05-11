@@ -17,10 +17,10 @@ namespace Chabloom.Billing.Backend.Controllers
     [Produces("application/json")]
     public class QuickTransactionController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly BillingDbContext _context;
         private readonly ILogger<QuickTransactionController> _logger;
 
-        public QuickTransactionController(ApplicationDbContext context, ILogger<QuickTransactionController> logger)
+        public QuickTransactionController(BillingDbContext context, ILogger<QuickTransactionController> logger)
         {
             _context = context;
             _logger = logger;

@@ -12,10 +12,10 @@ namespace Chabloom.Billing.Backend.Services
 {
     public class Validator : IValidator
     {
-        private readonly ApplicationDbContext _context;
+        private readonly BillingDbContext _context;
         private readonly ILogger<Validator> _logger;
 
-        public Validator(ApplicationDbContext context, ILogger<Validator> logger)
+        public Validator(BillingDbContext context, ILogger<Validator> logger)
         {
             _context = context;
             _logger = logger;

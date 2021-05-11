@@ -21,11 +21,11 @@ namespace Chabloom.Billing.Backend.Controllers
     [Produces("application/json")]
     public class AccountUsersController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly BillingDbContext _context;
         private readonly ILogger<AccountUsersController> _logger;
         private readonly IValidator _validator;
 
-        public AccountUsersController(ApplicationDbContext context, ILogger<AccountUsersController> logger,
+        public AccountUsersController(BillingDbContext context, ILogger<AccountUsersController> logger,
             IValidator validator)
         {
             _context = context;

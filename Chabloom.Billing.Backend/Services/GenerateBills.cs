@@ -7,9 +7,9 @@ namespace Chabloom.Billing.Backend.Services
 {
     public class GenerateBills
     {
-        private readonly ApplicationDbContext _context;
+        private readonly BillingDbContext _context;
 
-        public GenerateBills(ApplicationDbContext context)
+        public GenerateBills(BillingDbContext context)
         {
             _context = context;
         }

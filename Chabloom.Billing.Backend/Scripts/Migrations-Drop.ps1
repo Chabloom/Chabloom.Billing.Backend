@@ -1,1 +1,1 @@
-dotnet ef database drop --context ApplicationDbContext
+dotnet ef database drop --context BillingDbContext
