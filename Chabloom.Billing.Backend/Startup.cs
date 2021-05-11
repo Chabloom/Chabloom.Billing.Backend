@@ -28,7 +28,7 @@ namespace Chabloom.Billing.Backend
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<BillingDbContext>(options =>
-                options.UseSqlServer(
+                options.UseNpgsql(
                     Configuration.GetConnectionString("DefaultConnection")));
 
             services.Configure<ForwardedHeadersOptions>(options =>
