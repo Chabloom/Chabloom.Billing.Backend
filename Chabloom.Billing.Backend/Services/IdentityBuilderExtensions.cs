@@ -15,14 +15,6 @@ namespace Chabloom.Billing.Backend.Services
 {
     public static class IdentityBuilderExtensions
     {
-        private static readonly string[] Applications =
-        {
-            "Accounts",
-            "Billing",
-            "Transactions",
-            "Ecommerce"
-        };
-
         public static void SeedIdentityServer(this IApplicationBuilder app)
         {
             using var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>()?.CreateScope();
@@ -31,70 +23,60 @@ namespace Chabloom.Billing.Backend.Services
                 return;
             }
 
-            serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>().Database.Migrate();
-            serviceScope.ServiceProvider.GetRequiredService<PersistedGrantDbContext>().Database.Migrate();
+            serviceScope.ServiceProvider
+                .GetRequiredService<ConfigurationDbContext>().Database
+                .EnsureCreated();
+            serviceScope.ServiceProvider
+                .GetRequiredService<ConfigurationDbContext>().Database
+                .Migrate();
+            serviceScope.ServiceProvider
+                .GetRequiredService<PersistedGrantDbContext>().Database
+                .EnsureCreated();
+            serviceScope.ServiceProvider
+                .GetRequiredService<PersistedGrantDbContext>().Database
+                .Migrate();
+
+            const string name = "Chabloom.Billing.Backend";
+            const string clientName = "Chabloom.Billing.Frontend";
+            const int clientPort = 3001;
 
             var context = serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
             if (!context.Clients.Any())
             {
-                // Create initial clients
-                var clientPort = 3000;
-                var clients = new List<Client>();
-                foreach (var application in Applications)
+                // Create initial client
+                var client = new Client
                 {
-                    var client = new Client
+                    ClientId = clientName,
+                    ClientName = clientName,
+                    AllowedGrantTypes = GrantTypes.Code,
+                    AllowedScopes = new List<string>
                     {
-                        ClientId = $"Chabloom.{application}.Frontend",
-                        ClientName = $"Chabloom.{application}.Frontend",
-                        AllowedGrantTypes = GrantTypes.Code,
-                        AllowedScopes = new List<string>
-                        {
-                            "openid",
-                            "profile",
-                            $"Chabloom.{application}.Backend"
-                        },
-                        RedirectUris = new List<string>
-                        {
-                            $"http://localhost:{clientPort}/signin-oidc",
-                            $"https://localhost:{clientPort}/signin-oidc",
-                            $"https://{application.ToLower()}.chabloom.com/signin-oidc",
-                            $"https://{application.ToLower()}-uat-1.chabloom.com/signin-oidc",
-                            $"https://{application.ToLower()}-dev-1.chabloom.com/signin-oidc"
-                        },
-                        PostLogoutRedirectUris = new List<string>
-                        {
-                            $"http://localhost:{clientPort}/signout-oidc",
-                            $"https://localhost:{clientPort}/signout-oidc",
-                            $"https://{application.ToLower()}.chabloom.com/signout-oidc",
-                            $"https://{application.ToLower()}-uat-1.chabloom.com/signout-oidc",
-                            $"https://{application.ToLower()}-dev-1.chabloom.com/signout-oidc"
-                        },
-                        RequireConsent = false,
-                        RequireClientSecret = false,
-                        RequirePkce = true
-                    };
-                    // Allow access to accounts backend from other applications
-                    if (application == "Billing" || application == "Transactions" || application == "Ecommerce")
+                        "openid",
+                        "profile",
+                        name
+                    },
+                    RedirectUris = new List<string>
                     {
-                        client.AllowedScopes.Add("Chabloom.Accounts.Backend");
-                    }
-
-                    // Allow access to transactions backend from other applications
-                    if (application == "Billing" || application == "Ecommerce")
+                        $"http://localhost:{clientPort}/signin-oidc",
+                        $"https://localhost:{clientPort}/signin-oidc",
+                        "https://billing.chabloom.com/signin-oidc",
+                        "https://billing-uat-1.chabloom.com/signin-oidc",
+                        "https://billing-dev-1.chabloom.com/signin-oidc"
+                    },
+                    PostLogoutRedirectUris = new List<string>
                     {
-                        client.AllowedScopes.Add("Chabloom.Transactions.Backend");
-                    }
+                        $"http://localhost:{clientPort}/signout-oidc",
+                        $"https://localhost:{clientPort}/signout-oidc",
+                        "https://billing.chabloom.com/signout-oidc",
+                        "https://billing-uat-1.chabloom.com/signout-oidc",
+                        "https://billing-dev-1.chabloom.com/signout-oidc"
+                    },
+                    RequireConsent = false,
+                    RequireClientSecret = false,
+                    RequirePkce = true
+                };
 
-                    clients.Add(client);
-                    ++clientPort;
-                }
-
-                // Convert client models to entities
-                var clientEntities = clients
-                    .Select(client => client.ToEntity())
-                    .ToList();
-                // Add client entities to database
-                context.Clients.AddRange(clientEntities);
+                context.Add(client.ToEntity());
                 context.SaveChanges();
             }
 
@@ -111,40 +93,25 @@ namespace Chabloom.Billing.Backend.Services
                     .Select(resource => resource.ToEntity())
                     .ToList();
                 // Add identity resource entities to database
-                context.IdentityResources.AddRange(identityResourceEntities);
+                context.AddRange(identityResourceEntities);
                 context.SaveChanges();
             }
 
             if (!context.ApiScopes.Any())
             {
-                // Create initial API scopes
-                var apiScopes = Applications
-                    .Select(application => new ApiScope($"Chabloom.{application}.Backend"))
-                    .ToList();
-                // Convert API scope models to entities
-                var apiScopeEntities = apiScopes
-                    .Select(resource => resource.ToEntity())
-                    .ToList();
-                // Add API scope entities to database
-                context.ApiScopes.AddRange(apiScopeEntities);
+                // Create initial API scope
+                var apiScope = new ApiScope(name);
+
+                context.Add(apiScope.ToEntity());
                 context.SaveChanges();
             }
 
             if (!context.ApiResources.Any())
             {
-                // Create initial API resources
-                var apiResources = Applications
-                    .Select(application => new ApiResource($"Chabloom.{application}.Backend")
-                    {
-                        Scopes = {$"Chabloom.{application}.Backend"}
-                    })
-                    .ToList();
-                // Convert API resource models to entities
-                var apiResourceEntities = apiResources
-                    .Select(resource => resource.ToEntity())
-                    .ToList();
-                // Add API resource entities to database
-                context.ApiResources.AddRange(apiResourceEntities);
+                // Create initial API resource
+                var apiResource = new ApiResource(name);
+
+                context.Add(apiResource.ToEntity());
                 context.SaveChanges();
             }
         }
