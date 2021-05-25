@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Chabloom.Billing.Backend.Models.Auth;
 
 namespace Chabloom.Billing.Backend.Models
 {
@@ -30,8 +31,6 @@ namespace Chabloom.Billing.Backend.Models
         public List<Bill> Bills { get; set; }
 
         public List<BillSchedule> BillSchedules { get; set; }
-
-        public List<AccountUser> Users { get; set; }
 
         #region Auditing
 

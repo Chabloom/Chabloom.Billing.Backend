@@ -7,19 +7,16 @@ namespace Chabloom.Billing.Backend.ViewModels
 {
     public class BillViewModel
     {
-        [Required]
         public Guid Id { get; set; }
 
         [Required]
-        [MaxLength(255)]
         public string Name { get; set; }
 
         [Required]
-        public decimal Amount { get; set; }
+        public ulong Amount { get; set; }
 
         [Required]
-        [MaxLength(255)]
-        public string Currency { get; set; }
+        public string CurrencyId { get; set; }
 
         [Required]
         public DateTime DueDate { get; set; }

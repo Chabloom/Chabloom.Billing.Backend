@@ -2,13 +2,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using Chabloom.Billing.Backend.Data;
+using Chabloom.Billing.Backend.Models.Auth;
 using Chabloom.Billing.Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +32,7 @@ namespace Chabloom.Billing.Backend
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<BillingDbContext>(options =>
+            services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(
                     Configuration.GetConnectionString("DefaultConnection")));
 
@@ -39,7 +43,39 @@ namespace Chabloom.Billing.Backend
                 options.KnownProxies.Clear();
             });
 
+            services.AddIdentity<User, Role>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
+
             const string audience = "Chabloom.Billing.Backend";
+
+            var frontendPublicAddress = Environment.GetEnvironmentVariable("BILLING_FRONTEND_ADDRESS");
+            var identityServerBuilder = services.AddIdentityServer(options =>
+                {
+                    options.UserInteraction.ErrorUrl = $"{frontendPublicAddress}/Account/Error";
+                    options.UserInteraction.LoginUrl = $"{frontendPublicAddress}/Account/SignIn";
+                    options.UserInteraction.LogoutUrl = $"{frontendPublicAddress}/Account/SignOut";
+                })
+                .AddConfigurationStore(options => options.ConfigureDbContext = x =>
+                    x.UseNpgsql(Configuration.GetConnectionString("ConfigurationConnection"),
+                        y => y.MigrationsAssembly(audience)))
+                .AddOperationalStore(options => options.ConfigureDbContext = x =>
+                    x.UseNpgsql(Configuration.GetConnectionString("OperationConnection"),
+                        y => y.MigrationsAssembly(audience)))
+                .AddAspNetIdentity<User>();
+
+            const string signingKeyPath = "signing/cert.pfx";
+            if (File.Exists(signingKeyPath))
+            {
+                Console.WriteLine("Using signing credential from kubernetes storage");
+                var signingKeyCert = new X509Certificate2(File.ReadAllBytes(signingKeyPath));
+                identityServerBuilder.AddSigningCredential(signingKeyCert);
+            }
+            else
+            {
+                Console.WriteLine("Using developer signing credential");
+                identityServerBuilder.AddDeveloperSigningCredential();
+            }
 
             var redisConfiguration = Environment.GetEnvironmentVariable("REDIS_CONFIGURATION");
             if (!string.IsNullOrEmpty(redisConfiguration))
@@ -52,7 +88,7 @@ namespace Chabloom.Billing.Backend
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = Environment.GetEnvironmentVariable("ACCOUNTS_BACKEND_ADDRESS");
+                    options.Authority = Environment.GetEnvironmentVariable("BILLING_BACKEND_ADDRESS");
                     options.Audience = audience;
                 });
 
@@ -66,6 +102,8 @@ namespace Chabloom.Billing.Backend
             });
 
             services.AddScoped<IValidator, Validator>();
+            services.AddTransient<EmailSender>();
+            services.AddTransient<SmsSender>();
 
             // Load CORS origins
             services.AddCors(options =>
@@ -74,10 +112,7 @@ namespace Chabloom.Billing.Backend
                 {
                     var origins = new List<string>
                     {
-                        Environment.GetEnvironmentVariable("ACCOUNTS_FRONTEND_ADDRESS"),
-                        Environment.GetEnvironmentVariable("BILLING_FRONTEND_ADDRESS"),
-                        Environment.GetEnvironmentVariable("ECOMMERCE_FRONTEND_ADDRESS"),
-                        Environment.GetEnvironmentVariable("TRANSACTIONS_FRONTEND_ADDRESS")
+                        Environment.GetEnvironmentVariable("BILLING_FRONTEND_ADDRESS")
                     };
                     if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
                     {
@@ -86,6 +121,7 @@ namespace Chabloom.Billing.Backend
                         origins.Add("https://localhost:3002");
                         origins.Add("https://localhost:3003");
                     }
+
                     builder.WithOrigins(origins.ToArray());
                     builder.AllowAnyMethod();
                     builder.AllowAnyHeader();
@@ -105,7 +141,11 @@ namespace Chabloom.Billing.Backend
 
             app.UseForwardedHeaders();
 
+            app.SeedIdentityServer();
+
             app.UseCors();
+
+            app.UseIdentityServer();
 
             app.UseRouting();
 

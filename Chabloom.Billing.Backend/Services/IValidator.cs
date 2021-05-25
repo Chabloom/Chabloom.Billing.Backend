@@ -1,6 +1,7 @@
 ﻿// Copyright 2020-2021 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -9,27 +10,12 @@ namespace Chabloom.Billing.Backend.Services
     public interface IValidator
     {
         /// <summary>
-        ///     Determine if a specified user has access at the account level or higher
-        /// </summary>
-        /// <param name="userId">The user id</param>
-        /// <param name="accountId">The account id</param>
-        /// <returns>True if the user is authorized, false otherwise</returns>
-        public Task<bool> CheckAccountAccessAsync(Guid userId, Guid accountId);
-
-        /// <summary>
-        ///     Determine if a specified user has access at the tenant level or higher
+        ///     Get the tenant roles the user has access to
         /// </summary>
         /// <param name="userId">The user id</param>
         /// <param name="tenantId">The tenant id</param>
-        /// <returns>True if the user is authorized, false otherwise</returns>
-        public Task<bool> CheckTenantAccessAsync(Guid userId, Guid tenantId);
-
-        /// <summary>
-        ///     Determine if a specified user has access at the application level
-        /// </summary>
-        /// <param name="userId">The user id</param>
-        /// <returns>True if the user is authorized, false otherwise</returns>
-        public Task<bool> CheckApplicationAccessAsync(Guid userId);
+        /// <returns>A list of all roles the user has access to</returns>
+        public Task<List<string>> GetTenantRolesAsync(Guid userId, Guid tenantId);
 
         /// <summary>
         ///     Validate that a user has a user id

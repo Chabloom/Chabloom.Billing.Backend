@@ -2,17 +2,22 @@
 
 using System;
 using System.ComponentModel.DataAnnotations;
+using Chabloom.Billing.Backend.Models.Auth;
 
-namespace Chabloom.Billing.Backend.ViewModels
+namespace Chabloom.Billing.Backend.Models
 {
-    public class AccountUserViewModel
+    public class UserAccount
     {
-        public Guid Id { get; set; }
-
         [Required]
         public Guid UserId { get; set; }
 
         [Required]
+        public User User { get; set; }
+
+        [Required]
         public Guid AccountId { get; set; }
+
+        [Required]
+        public Account Account { get; set; }
     }
 }

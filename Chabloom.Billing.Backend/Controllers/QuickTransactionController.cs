@@ -17,10 +17,10 @@ namespace Chabloom.Billing.Backend.Controllers
     [Produces("application/json")]
     public class QuickTransactionController : Controller
     {
-        private readonly BillingDbContext _context;
+        private readonly ApplicationDbContext _context;
         private readonly ILogger<QuickTransactionController> _logger;
 
-        public QuickTransactionController(BillingDbContext context, ILogger<QuickTransactionController> logger)
+        public QuickTransactionController(ApplicationDbContext context, ILogger<QuickTransactionController> logger)
         {
             _context = context;
             _logger = logger;
@@ -48,8 +48,7 @@ namespace Chabloom.Billing.Backend.Controllers
             var bill = await _context.Bills
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == viewModel.BillId)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == viewModel.BillId);
             if (bill == null)
             {
                 _logger.LogWarning($"User attempted to update unknown bill {viewModel.BillId}");
@@ -60,8 +59,7 @@ namespace Chabloom.Billing.Backend.Controllers
             bill.TransactionId = viewModel.TransactionId;
 
             _context.Update(bill);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
+            await _context.SaveChangesAsync();
 
             // Log the operation
             _logger.LogInformation($"User made quick transaction for bill {bill.Id}");

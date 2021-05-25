@@ -21,11 +21,11 @@ namespace Chabloom.Billing.Backend.Controllers
     [Produces("application/json")]
     public class BillSchedulesController : ControllerBase
     {
-        private readonly BillingDbContext _context;
+        private readonly ApplicationDbContext _context;
         private readonly ILogger<BillSchedulesController> _logger;
         private readonly IValidator _validator;
 
-        public BillSchedulesController(BillingDbContext context, ILogger<BillSchedulesController> logger,
+        public BillSchedulesController(ApplicationDbContext context, ILogger<BillSchedulesController> logger,
             IValidator validator)
         {
             _context = context;
@@ -46,22 +46,12 @@ namespace Chabloom.Billing.Backend.Controllers
                 return Forbid();
             }
 
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, accountId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to access bill schedules");
-                return Forbid();
-            }
-
             // Get all bill schedules
             var billSchedules = await _context.BillSchedules
                 .Where(x => x.AccountId == accountId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .ToListAsync()
-                .ConfigureAwait(false);
+                .ToListAsync();
             if (billSchedules == null || !billSchedules.Any())
             {
                 return new List<BillScheduleViewModel>();
@@ -74,7 +64,7 @@ namespace Chabloom.Billing.Backend.Controllers
                     Id = x.Id,
                     Name = x.Name,
                     Amount = x.Amount,
-                    Currency = x.Currency,
+                    CurrencyId = x.CurrencyId,
                     Day = x.Day,
                     MonthInterval = x.MonthInterval,
                     BeginDate = x.BeginDate,
@@ -110,7 +100,7 @@ namespace Chabloom.Billing.Backend.Controllers
                     Id = x.Id,
                     Name = x.Name,
                     Amount = x.Amount,
-                    Currency = x.Currency,
+                    CurrencyId = x.CurrencyId,
                     Day = x.Day,
                     MonthInterval = x.MonthInterval,
                     BeginDate = x.BeginDate,
@@ -118,21 +108,11 @@ namespace Chabloom.Billing.Backend.Controllers
                     TransactionScheduleId = x.TransactionScheduleId,
                     AccountId = x.AccountId
                 })
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (viewModel == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to access unknown bill schedule {id}");
                 return NotFound();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, viewModel.AccountId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to access bill schedule {id}");
-                return Forbid();
             }
 
             // Log the operation
@@ -168,10 +148,10 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             var billSchedule = await _context.BillSchedules
+                .Include(x => x.Account)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (billSchedule == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to update unknown bill schedule {id}");
@@ -179,9 +159,8 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, billSchedule.Account.Tenant.Id)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, billSchedule.Account.TenantId);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning($"User id {userId} was not authorized to update bill schedule {id}");
                 return Forbid();
@@ -190,7 +169,7 @@ namespace Chabloom.Billing.Backend.Controllers
             // Update the bill schedule
             billSchedule.Name = viewModel.Name;
             billSchedule.Amount = viewModel.Amount;
-            billSchedule.Currency = viewModel.Currency;
+            billSchedule.CurrencyId = viewModel.CurrencyId;
             billSchedule.Day = viewModel.Day;
             billSchedule.MonthInterval = viewModel.MonthInterval;
             billSchedule.BeginDate = viewModel.BeginDate;
@@ -199,8 +178,7 @@ namespace Chabloom.Billing.Backend.Controllers
             billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(billSchedule);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
+            await _context.SaveChangesAsync();
 
             // Log the operation
             _logger.LogInformation($"User {userId} updated bill schedule {billSchedule.Id}");
@@ -210,7 +188,7 @@ namespace Chabloom.Billing.Backend.Controllers
                 Id = billSchedule.Id,
                 Name = billSchedule.Name,
                 Amount = billSchedule.Amount,
-                Currency = billSchedule.Currency,
+                CurrencyId = billSchedule.CurrencyId,
                 Day = billSchedule.Day,
                 MonthInterval = billSchedule.MonthInterval,
                 BeginDate = billSchedule.BeginDate,
@@ -247,9 +225,7 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Find the specified account
             var account = await _context.Accounts
-                .Include(x => x.Tenant)
-                .FirstOrDefaultAsync(x => x.Id == viewModel.AccountId)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == viewModel.AccountId);
             if (account == null)
             {
                 _logger.LogWarning("Could not find account for bill schedule");
@@ -257,9 +233,8 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, account.Tenant.Id)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, account.TenantId);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning($"User id {userId} was not authorized to create bill schedules");
                 return Forbid();
@@ -270,6 +245,7 @@ namespace Chabloom.Billing.Backend.Controllers
             {
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
+                CurrencyId = viewModel.CurrencyId,
                 Day = viewModel.Day,
                 MonthInterval = viewModel.MonthInterval,
                 BeginDate = viewModel.BeginDate,
@@ -278,16 +254,8 @@ namespace Chabloom.Billing.Backend.Controllers
                 CreatedUser = userId
             };
 
-            // Optional currency specification
-            if (!string.IsNullOrEmpty(viewModel.Currency))
-            {
-                billSchedule.Currency = viewModel.Currency;
-            }
-
-            await _context.BillSchedules.AddAsync(billSchedule)
-                .ConfigureAwait(false);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
+            await _context.AddAsync(billSchedule);
+            await _context.SaveChangesAsync();
 
             // Log the operation
             _logger.LogInformation($"User {userId} created bill schedule {billSchedule.Id}");
@@ -317,8 +285,7 @@ namespace Chabloom.Billing.Backend.Controllers
                 .Include(x => x.Account)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (billSchedule == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to delete unknown bill schedule {id}");
@@ -326,9 +293,8 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, billSchedule.Account.TenantId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, billSchedule.Account.TenantId);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning($"User id {userId} was not authorized to delete bill schedule {id}");
                 return Forbid();
@@ -340,8 +306,7 @@ namespace Chabloom.Billing.Backend.Controllers
             billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(billSchedule);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Chabloom.Billing.Backend.Models;
+using Chabloom.Billing.Backend.Models.Auth;
 
 // ReSharper disable StringLiteralTypo
 
@@ -13,9 +14,23 @@ namespace Chabloom.Billing.Backend.Data
         public static Tenant Tenant { get; } = new()
         {
             Id = Guid.Parse("A2CEE23F-3250-4B1B-93DC-87443B02DD89"),
-            Name = "North Augusta",
-            CreatedUser = Guid.Empty,
-            CreatedTimestamp = DateTimeOffset.MinValue
+            Name = "North Augusta"
+        };
+
+        public static List<Role> TenantRoles { get; } = new()
+        {
+            new Role
+            {
+                Id = Guid.Parse("99A3B0A6-0ADB-4FEE-B2CC-380EE21EA446"),
+                Name = "Admin",
+                TenantId = Tenant.Id
+            },
+            new Role
+            {
+                Id = Guid.Parse("F94C10F9-69DD-459F-A2FE-3BE09C2C4075"),
+                Name = "Manager",
+                TenantId = Tenant.Id
+            }
         };
 
         public static List<Account> Accounts { get; } = new()
@@ -68,7 +83,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("7690274E-C4AD-4964-9CC5-3625CCAABCCA"),
                 Name = "August 2021",
-                Amount = 43.29M,
+                Amount = 4329,
+                CurrencyId = "USD",
                 AccountId = Accounts[0].Id,
                 DueDate = new DateTime(2021, 9, 1),
                 CreatedUser = Guid.Empty,
@@ -78,7 +94,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("8BE7E620-7F46-4460-A49A-DE09B8895640"),
                 Name = "August 2021",
-                Amount = 55.21M,
+                Amount = 5521,
+                CurrencyId = "USD",
                 AccountId = Accounts[1].Id,
                 DueDate = new DateTime(2021, 9, 1),
                 CreatedUser = Guid.Empty,
@@ -88,7 +105,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("8240327D-547A-4875-92C8-B1DCFA5F13A9"),
                 Name = "August 2021",
-                Amount = 61.23M,
+                Amount = 6123,
+                CurrencyId = "USD",
                 AccountId = Accounts[2].Id,
                 DueDate = new DateTime(2021, 9, 1),
                 CreatedUser = Guid.Empty,
@@ -98,7 +116,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("6EEC413F-F55E-4DAC-8A6D-2F38E5A04FE7"),
                 Name = "August 2021",
-                Amount = 45.91M,
+                Amount = 4591,
+                CurrencyId = "USD",
                 AccountId = Accounts[3].Id,
                 DueDate = new DateTime(2021, 9, 1),
                 CreatedUser = Guid.Empty,
@@ -112,7 +131,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("BE05AE00-081D-48D4-B047-E93FB7523934"),
                 Name = "Monthly Water",
-                Amount = 33.50M,
+                Amount = 3350,
+                CurrencyId = "USD",
                 AccountId = Accounts[0].Id,
                 Day = 1,
                 MonthInterval = 1,
@@ -123,7 +143,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("298AA43A-6376-4049-AE6E-6C0D1741FCC4"),
                 Name = "Monthly Water",
-                Amount = 33.50M,
+                Amount = 3350,
+                CurrencyId = "USD",
                 AccountId = Accounts[1].Id,
                 Day = 1,
                 MonthInterval = 1,
@@ -134,7 +155,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("D28F8EC7-E716-4D5A-B0C4-832D9A1134D5"),
                 Name = "Monthly Water",
-                Amount = 33.50M,
+                Amount = 3350,
+                CurrencyId = "USD",
                 AccountId = Accounts[2].Id,
                 Day = 1,
                 MonthInterval = 1,
@@ -145,7 +167,8 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("38FBB0FE-B1B3-42A9-B591-88C37381E5BC"),
                 Name = "Monthly Water",
-                Amount = 33.50M,
+                Amount = 3350,
+                CurrencyId = "USD",
                 AccountId = Accounts[3].Id,
                 Day = 1,
                 MonthInterval = 1,

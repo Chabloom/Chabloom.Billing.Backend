@@ -16,12 +16,10 @@ namespace Chabloom.Billing.Backend.Models
         public string Name { get; set; }
 
         [Required]
-        [Column(TypeName = "decimal(18, 2)")]
-        public decimal Amount { get; set; }
+        public ulong Amount { get; set; }
 
         [Required]
-        [MaxLength(255)]
-        public string Currency { get; set; } = "USD";
+        public string CurrencyId { get; set; }
 
         [Required]
         [Column(TypeName = "date")]

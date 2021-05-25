@@ -21,11 +21,11 @@ namespace Chabloom.Billing.Backend.Controllers
     [Produces("application/json")]
     public class AccountsController : ControllerBase
     {
-        private readonly BillingDbContext _context;
+        private readonly ApplicationDbContext _context;
         private readonly ILogger<AccountsController> _logger;
         private readonly IValidator _validator;
 
-        public AccountsController(BillingDbContext context, ILogger<AccountsController> logger,
+        public AccountsController(ApplicationDbContext context, ILogger<AccountsController> logger,
             IValidator validator)
         {
             _context = context;
@@ -47,9 +47,8 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, tenantId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, tenantId);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning($"User id {userId} was not authorized to access accounts");
                 return Forbid();
@@ -60,8 +59,7 @@ namespace Chabloom.Billing.Backend.Controllers
                 .Where(x => x.TenantId == tenantId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .ToListAsync()
-                .ConfigureAwait(false);
+                .ToListAsync();
             if (accounts == null)
             {
                 return new List<AccountViewModel>();
@@ -96,29 +94,18 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Get all accounts the user is authorized to view
-            var accounts = await _context.Accounts
-                // Include the users
-                .Include(x => x.Users)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .ToListAsync()
-                .ConfigureAwait(false);
-            if (!accounts.Any())
-            {
-                return new List<AccountViewModel>();
-            }
-
-            // Filter accounts by user id
-            var authorizedAccounts = accounts
-                .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
-                .ToList();
-            if (!authorizedAccounts.Any())
+            var userAccounts = await _context.UserAccounts
+                .Include(x => x.Account)
+                .Where(x => x.UserId == userId)
+                .Select(x => x.Account)
+                .ToListAsync();
+            if (!userAccounts.Any())
             {
                 return new List<AccountViewModel>();
             }
 
             // Convert to view models
-            var viewModels = authorizedAccounts
+            var viewModels = userAccounts
                 .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
@@ -157,21 +144,11 @@ namespace Chabloom.Billing.Backend.Controllers
                     ReferenceId = x.ReferenceId,
                     TenantId = x.TenantId
                 })
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (viewModel == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
                 return NotFound();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckAccountAccessAsync(userId, id)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to access account {id}");
-                return Forbid();
             }
 
             return Ok(viewModel);
@@ -197,8 +174,7 @@ namespace Chabloom.Billing.Backend.Controllers
                     ReferenceId = x.ReferenceId,
                     TenantId = x.TenantId
                 })
-                .FirstOrDefaultAsync(x => x.ReferenceId == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.ReferenceId == id);
             if (viewModel == null)
             {
                 _logger.LogWarning($"User attempted to access unknown account {id}");
@@ -237,8 +213,7 @@ namespace Chabloom.Billing.Backend.Controllers
             var account = await _context.Accounts
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (account == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
@@ -246,9 +221,8 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, account.TenantId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, account.TenantId);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning($"User id {userId} was not authorized to update account {id}");
                 return Forbid();
@@ -262,8 +236,7 @@ namespace Chabloom.Billing.Backend.Controllers
             account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
+            await _context.SaveChangesAsync();
 
             _logger.LogInformation($"User {userId} updated account {id}");
 
@@ -302,9 +275,8 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, viewModel.TenantId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, viewModel.TenantId);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning(
                     $"User id {userId} was not authorized to create accounts for tenant {viewModel.TenantId}");
@@ -313,8 +285,7 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Find the specified tenant
             var tenant = await _context.Tenants
-                .FindAsync(viewModel.TenantId)
-                .ConfigureAwait(false);
+                .FindAsync(viewModel.TenantId);
             if (tenant == null)
             {
                 _logger.LogWarning($"Specified tenant {viewModel.TenantId} could not be found");
@@ -331,10 +302,8 @@ namespace Chabloom.Billing.Backend.Controllers
                 CreatedUser = userId
             };
 
-            await _context.Accounts.AddAsync(account)
-                .ConfigureAwait(false);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
+            await _context.Accounts.AddAsync(account);
+            await _context.SaveChangesAsync();
 
             viewModel.Id = account.Id;
 
@@ -361,8 +330,7 @@ namespace Chabloom.Billing.Backend.Controllers
             var account = await _context.Accounts
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (account == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
@@ -370,9 +338,8 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, account.TenantId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, account.TenantId);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning(
                     $"User id {userId} was not authorized to delete accounts for tenant {account.TenantId}");
@@ -385,8 +352,7 @@ namespace Chabloom.Billing.Backend.Controllers
             account.DisabledTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }

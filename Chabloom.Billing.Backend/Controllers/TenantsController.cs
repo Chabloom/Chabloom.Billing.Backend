@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
-using Chabloom.Billing.Backend.Models;
+using Chabloom.Billing.Backend.Models.Auth;
 using Chabloom.Billing.Backend.Services;
 using Chabloom.Billing.Backend.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -21,11 +21,11 @@ namespace Chabloom.Billing.Backend.Controllers
     [Produces("application/json")]
     public class TenantsController : ControllerBase
     {
-        private readonly BillingDbContext _context;
+        private readonly ApplicationDbContext _context;
         private readonly ILogger<TenantsController> _logger;
         private readonly IValidator _validator;
 
-        public TenantsController(BillingDbContext context, ILogger<TenantsController> logger, IValidator validator)
+        public TenantsController(ApplicationDbContext context, ILogger<TenantsController> logger, IValidator validator)
         {
             _context = context;
             _logger = logger;
@@ -42,9 +42,7 @@ namespace Chabloom.Billing.Backend.Controllers
             // Find all tenants
             var tenants = await _context.Tenants
                 // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .ToListAsync()
-                .ConfigureAwait(false);
+                .ToListAsync();
 
             // Convert to view models
             var viewModels = tenants
@@ -72,37 +70,29 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Find all tenants
-            var tenants = await _context.Tenants
-                // Include the users
-                .Include(x => x.Users)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .ToListAsync()
-                .ConfigureAwait(false);
-            if (!tenants.Any())
+            var tenants = new List<Tenant>();
+            var userRoles = await _context.UserRoles
+                .Where(x => x.UserId == userId)
+                .ToListAsync();
+            foreach (var userRole in userRoles)
             {
-                return new List<TenantViewModel>();
-            }
-
-            var authorizedTenants = tenants;
-
-            // Check if the user is authorized at the application level
-            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                // Filter tenants by user id
-                authorizedTenants = tenants
-                    .Where(x => x.Users.Select(y => y.UserId).Contains(userId))
-                    .ToList();
-                if (!authorizedTenants.Any())
+                var role = await _context.Roles
+                    .FirstOrDefaultAsync(x => x.Id == userRole.RoleId);
+                if (role == null)
                 {
-                    return new List<TenantViewModel>();
+                    continue;
+                }
+
+                var tenant = await _context.Tenants
+                    .FirstOrDefaultAsync(x => x.Id == role.TenantId);
+                if (tenant != null)
+                {
+                    tenants.Add(tenant);
                 }
             }
 
             // Convert to view models
-            var viewModels = authorizedTenants
+            var viewModels = tenants
                 .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
@@ -128,15 +118,12 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Find the specified tenant
             var viewModel = await _context.Tenants
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
                 .Select(x => new TenantViewModel
                 {
                     Id = x.Id,
                     Name = x.Name
                 })
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (viewModel == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
@@ -144,178 +131,14 @@ namespace Chabloom.Billing.Backend.Controllers
             }
 
             // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckTenantAccessAsync(userId, id)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
+            var userRoles = await _validator.GetTenantRolesAsync(userId, id);
+            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning($"User id {userId} was not authorized to access tenant {id}");
                 return Forbid();
             }
 
             return Ok(viewModel);
-        }
-
-        [HttpPut("{id}")]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<TenantViewModel>> PutTenant(Guid id, TenantViewModel viewModel)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (viewModel == null || id != viewModel.Id)
-            {
-                return BadRequest();
-            }
-
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
-            // Find the specified tenant if the user has access to it
-            var tenant = await _context.Tenants
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
-            if (tenant == null)
-            {
-                _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
-                return NotFound();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to update tenant {id}");
-                return Forbid();
-            }
-
-            // Update the tenant
-            tenant.Name = viewModel.Name;
-            tenant.UpdatedUser = userId;
-            tenant.UpdatedTimestamp = DateTimeOffset.UtcNow;
-
-            _context.Update(tenant);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
-            _logger.LogInformation($"User {userId} updated tenant {id}");
-
-            return Ok(new TenantViewModel
-            {
-                Id = tenant.Id,
-                Name = tenant.Name
-            });
-        }
-
-        [HttpPost]
-        [ProducesResponseType(201)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        public async Task<ActionResult<TenantViewModel>> PostTenant(TenantViewModel viewModel)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (viewModel == null)
-            {
-                return BadRequest();
-            }
-
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to create tenants");
-                return Forbid();
-            }
-
-            // Create the new tenant
-            var tenant = new Tenant
-            {
-                Name = viewModel.Name,
-                CreatedUser = userId
-            };
-
-            await _context.Tenants.AddAsync(tenant)
-                .ConfigureAwait(false);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
-            viewModel.Id = tenant.Id;
-
-            _logger.LogInformation($"User {userId} created tenant {tenant.Id}");
-
-            return CreatedAtAction("GetTenant", new {id = viewModel.Id}, viewModel);
-        }
-
-        [HttpDelete("{id}")]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        [ProducesResponseType(404)]
-        public async Task<IActionResult> DeleteTenant(Guid id)
-        {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
-            // Find the specified tenant if the user has access to it
-            var tenant = await _context.Tenants
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id)
-                .ConfigureAwait(false);
-            if (tenant == null)
-            {
-                _logger.LogWarning($"User id {userId} attempted to access unknown tenant {id}");
-                return NotFound();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userAuthorized = await _validator.CheckApplicationAccessAsync(userId)
-                .ConfigureAwait(false);
-            if (!userAuthorized)
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to delete tenants");
-                return Forbid();
-            }
-
-            // Disable the tenant
-            tenant.Disabled = true;
-            tenant.DisabledUser = userId;
-            tenant.DisabledTimestamp = DateTimeOffset.UtcNow;
-
-            _context.Update(tenant);
-            await _context.SaveChangesAsync()
-                .ConfigureAwait(false);
-
-            return NoContent();
         }
     }
 }
