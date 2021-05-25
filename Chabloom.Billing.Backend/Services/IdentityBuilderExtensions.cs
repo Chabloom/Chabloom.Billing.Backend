@@ -25,13 +25,7 @@ namespace Chabloom.Billing.Backend.Services
 
             serviceScope.ServiceProvider
                 .GetRequiredService<ConfigurationDbContext>().Database
-                .EnsureCreated();
-            serviceScope.ServiceProvider
-                .GetRequiredService<ConfigurationDbContext>().Database
                 .Migrate();
-            serviceScope.ServiceProvider
-                .GetRequiredService<PersistedGrantDbContext>().Database
-                .EnsureCreated();
             serviceScope.ServiceProvider
                 .GetRequiredService<PersistedGrantDbContext>().Database
                 .Migrate();
