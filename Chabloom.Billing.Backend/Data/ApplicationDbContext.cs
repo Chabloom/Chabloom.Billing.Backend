@@ -11,7 +11,7 @@ namespace Chabloom.Billing.Backend.Data
 {
     public class ApplicationDbContext : IdentityDbContext<User, Role, Guid>
     {
-        public ApplicationDbContext(DbContextOptions options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
