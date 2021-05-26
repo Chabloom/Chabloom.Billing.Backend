@@ -10,5 +10,8 @@ namespace Chabloom.Billing.Backend.Models.Auth
     {
         [Required]
         public Guid TenantId { get; set; }
+
+        [Required]
+        public Tenant Tenant { get; set; }
     }
 }
