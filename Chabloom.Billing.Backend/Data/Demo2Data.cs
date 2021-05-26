@@ -23,12 +23,14 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("191E5E91-0E14-460E-A481-2F00C72B8228"),
                 Name = "Admin",
+                ConcurrencyStamp = "e9da379a-ccf0-4209-9460-555d013831b1",
                 TenantId = Tenant.Id
             },
             new Role
             {
                 Id = Guid.Parse("52C71AE1-9B6B-4694-9EA8-E70501A8ACA2"),
                 Name = "Manager",
+                ConcurrencyStamp = "6bad7203-2f73-4ba7-92b8-98ee8ad95f3f",
                 TenantId = Tenant.Id
             }
         };
