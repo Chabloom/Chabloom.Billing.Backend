@@ -18,6 +18,8 @@ namespace Chabloom.Billing.Backend.Data
 
         public DbSet<Tenant> Tenants { get; set; }
 
+        public DbSet<TenantAddress> TenantAddresses { get; set; }
+
         public DbSet<Account> Accounts { get; set; }
 
         public DbSet<Bill> Bills { get; set; }
