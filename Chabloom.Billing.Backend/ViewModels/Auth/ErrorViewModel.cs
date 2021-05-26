@@ -7,12 +7,12 @@ namespace Chabloom.Billing.Backend.ViewModels.Auth
     public class ErrorViewModel
     {
         [Required]
-        public string Id { get; set; }
-
         public string Error { get; set; }
 
+        [Required]
         public string ErrorDescription { get; set; }
 
+        [Required]
         public string RedirectUri { get; set; }
     }
 }
