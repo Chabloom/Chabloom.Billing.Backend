@@ -37,7 +37,7 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<UserAccountViewModel>>> GetUserAccounts([FromQuery] Guid tenantId)
+        public async Task<IActionResult> GetUserAccounts([FromQuery] Guid tenantId)
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
@@ -54,7 +54,7 @@ namespace Chabloom.Billing.Backend.Controllers
                 .ToListAsync();
             if (userAccounts == null)
             {
-                return new List<UserAccountViewModel>();
+                return Ok(new List<UserAccountViewModel>());
             }
 
             // Convert to view models
@@ -69,12 +69,13 @@ namespace Chabloom.Billing.Backend.Controllers
             return Ok(viewModels);
         }
 
-        [HttpPost]
+        [HttpPost("Create")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<UserAccountViewModel>> PostUserAccount(UserAccountViewModel viewModel)
+        [ProducesResponseType(409)]
+        public async Task<IActionResult> CreateUserAccount([FromBody] UserAccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -96,8 +97,17 @@ namespace Chabloom.Billing.Backend.Controllers
                 return BadRequest();
             }
 
+            // Ensure the user account does not yet exist
+            var userAccount = await _context.UserAccounts
+                .Where(x => x.AccountId == viewModel.AccountId)
+                .FirstOrDefaultAsync(x => x.UserId == userId);
+            if (userAccount != null)
+            {
+                return Conflict();
+            }
+
             // Create the new account
-            var userAccount = new UserAccount
+            userAccount = new UserAccount
             {
                 UserId = userId,
                 AccountId = viewModel.AccountId
@@ -106,24 +116,24 @@ namespace Chabloom.Billing.Backend.Controllers
             await _context.AddAsync(userAccount);
             await _context.SaveChangesAsync();
 
-            var retViewModel = new UserAccountViewModel
-            {
-                UserId = userAccount.UserId,
-                AccountId = userAccount.AccountId
-            };
-
             _logger.LogInformation($"User {userId} started tracking account {userAccount.AccountId}");
 
-            return Ok(retViewModel);
+            return Ok();
         }
 
-        [HttpDelete("{id}")]
-        [ProducesResponseType(204)]
+        [HttpPost("Delete")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> DeleteUserAccount(Guid id)
+        public async Task<IActionResult> DeleteUserAccount([FromBody] UserAccountViewModel viewModel)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             // Get the user id
             var userId = _validator.GetUserId(User);
             if (userId == Guid.Empty)
@@ -133,8 +143,8 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Find the specified user account
             var userAccount = await _context.UserAccounts
-                .Where(x => x.UserId == userId)
-                .FirstOrDefaultAsync(x => x.AccountId == id);
+                .Where(x => x.AccountId == viewModel.AccountId)
+                .FirstOrDefaultAsync(x => x.UserId == userId);
             if (userAccount == null)
             {
                 return NotFound();
@@ -145,7 +155,7 @@ namespace Chabloom.Billing.Backend.Controllers
 
             _logger.LogInformation($"User {userId} stopped tracking account {userAccount.AccountId}");
 
-            return NoContent();
+            return Ok();
         }
     }
 }
