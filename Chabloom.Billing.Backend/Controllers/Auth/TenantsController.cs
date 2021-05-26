@@ -53,17 +53,28 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
 
         [HttpGet("Current")]
         [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> GetCurrentTenant()
         {
             // Get the referrer address based on the header value
             var headers = Request.GetTypedHeaders();
-            var address = headers.Referer.AbsoluteUri;
+            var referrer = headers.Referer;
+            if (referrer == null)
+            {
+                return BadRequest();
+            }
+            var address = referrer.AbsoluteUri;
+            if (string.IsNullOrEmpty(address))
+            {
+                return BadRequest();
+            }
 
             // Find the tenant belonging to the specified address
             var tenantAddress = await _context.TenantAddresses
                 .Include(x => x.Tenant)
-                .FirstOrDefaultAsync(x => string.Equals(x.Address, address, StringComparison.CurrentCultureIgnoreCase));
+                // ReSharper disable once SpecifyStringComparison
+                .FirstOrDefaultAsync(x => x.Address.ToUpper() == address.ToUpper());
             if (tenantAddress == null)
             {
                 _logger.LogError($"Could not find tenant for address {address}");
