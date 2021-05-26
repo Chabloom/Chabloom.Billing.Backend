@@ -1,6 +1,7 @@
 ﻿// Copyright 2020-2021 Chabloom LC. All rights reserved.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Chabloom.Billing.Backend.Models.Auth
@@ -13,5 +14,7 @@ namespace Chabloom.Billing.Backend.Models.Auth
 
         [Required]
         public string Name { get; set; }
+
+        public List<TenantAddress> TenantAddresses { get; set; }
     }
 }
