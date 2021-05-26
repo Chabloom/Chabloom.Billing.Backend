@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
 using Chabloom.Billing.Backend.Models.Auth;
 using Chabloom.Billing.Backend.Services;
-using Chabloom.Billing.Backend.ViewModels;
+using Chabloom.Billing.Backend.ViewModels.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Chabloom.Billing.Backend.Controllers
+namespace Chabloom.Billing.Backend.Controllers.Auth
 {
     [Authorize]
     [ApiController]
