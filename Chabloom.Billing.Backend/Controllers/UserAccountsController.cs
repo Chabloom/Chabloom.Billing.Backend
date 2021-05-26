@@ -37,7 +37,7 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<UserAccountViewModel>>> GetUserAccounts()
+        public async Task<ActionResult<IEnumerable<UserAccountViewModel>>> GetUserAccounts([FromQuery] Guid tenantId)
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
@@ -48,6 +48,8 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Get all accounts the user is tracking
             var userAccounts = await _context.UserAccounts
+                .Include(x => x.AccountId)
+                .Where(x => x.Account.TenantId == tenantId)
                 .Where(x => x.UserId == userId)
                 .ToListAsync();
             if (userAccounts == null)
