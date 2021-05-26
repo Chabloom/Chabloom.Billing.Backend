@@ -174,7 +174,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
             return Ok();
         }
 
-        [HttpPost("Error/{id}")]
+        [HttpGet("Error/{id}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         public async Task<IActionResult> AccountErrorAsync([FromRoute] string id)
