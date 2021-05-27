@@ -21,23 +21,23 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
     [ApiController]
     [Route("[controller]")]
     [Produces("application/json")]
-    public class AccountController : ControllerBase
+    public class AuthController : ControllerBase
     {
         private readonly IUserClaimsPrincipalFactory<User> _claimsPrincipalFactory;
         private readonly ApplicationDbContext _context;
         private readonly EmailSender _emailSender;
         private readonly IIdentityServerInteractionService _interactionService;
-        private readonly ILogger<AccountController> _logger;
+        private readonly ILogger<AuthController> _logger;
         private readonly SignInManager<User> _signInManager;
         private readonly SmsSender _smsSender;
         private readonly UserManager<User> _userManager;
 
-        public AccountController(
+        public AuthController(
             IUserClaimsPrincipalFactory<User> claimsPrincipalFactory,
             ApplicationDbContext context,
             EmailSender emailSender,
             IIdentityServerInteractionService interactionService,
-            ILogger<AccountController> logger,
+            ILogger<AuthController> logger,
             SignInManager<User> signInManager,
             SmsSender smsSender,
             UserManager<User> userManager)
