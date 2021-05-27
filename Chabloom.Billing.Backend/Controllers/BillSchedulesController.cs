@@ -37,27 +37,28 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<BillScheduleViewModel>>> GetBillSchedules(Guid accountId)
+        public async Task<IActionResult> GetBillSchedules(Guid accountId)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
+                return userTenantResult;
             }
 
             // Get all bill schedules
             var billSchedules = await _context.BillSchedules
+                .Include(x => x.Account)
                 .Where(x => x.AccountId == accountId)
+                .Where(x => x.Account.TenantId == tenantId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync();
-            if (billSchedules == null || !billSchedules.Any())
+            if (billSchedules == null)
             {
-                return new List<BillScheduleViewModel>();
+                return Ok(new List<BillScheduleViewModel>());
             }
 
-            // Convert to view models
             var viewModels = billSchedules
                 .Select(x => new BillScheduleViewModel
                 {
@@ -82,108 +83,31 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<BillSchedule>> GetBillSchedule(Guid id)
+        public async Task<IActionResult> GetBillSchedule(Guid id)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
+                return userTenantResult;
             }
 
             // Find the specified bill schedule
-            var viewModel = await _context.BillSchedules
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .Select(x => new BillScheduleViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Amount = x.Amount,
-                    CurrencyId = x.CurrencyId,
-                    Day = x.Day,
-                    MonthInterval = x.MonthInterval,
-                    BeginDate = x.BeginDate,
-                    EndDate = x.EndDate,
-                    TransactionScheduleId = x.TransactionScheduleId,
-                    AccountId = x.AccountId
-                })
-                .FirstOrDefaultAsync(x => x.Id == id);
-            if (viewModel == null)
-            {
-                _logger.LogWarning($"User id {userId} attempted to access unknown bill schedule {id}");
-                return NotFound();
-            }
-
-            // Log the operation
-            _logger.LogInformation($"User {userId} read bill schedule {viewModel.Id}");
-
-            return Ok(viewModel);
-        }
-
-        [HttpPut("{id}")]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<BillScheduleViewModel>> PutBillSchedule(Guid id,
-            BillScheduleViewModel viewModel)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (viewModel == null || id != viewModel.Id)
-            {
-                return BadRequest();
-            }
-
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
             var billSchedule = await _context.BillSchedules
-                .Include(x => x.Account)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FindAsync(id);
             if (billSchedule == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to update unknown bill schedule {id}");
                 return NotFound();
             }
 
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, billSchedule.Account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(billSchedule, tenantId.Value);
+            if (!tenantValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to update bill schedule {id}");
-                return Forbid();
+                return tenantResult;
             }
 
-            // Update the bill schedule
-            billSchedule.Name = viewModel.Name;
-            billSchedule.Amount = viewModel.Amount;
-            billSchedule.CurrencyId = viewModel.CurrencyId;
-            billSchedule.Day = viewModel.Day;
-            billSchedule.MonthInterval = viewModel.MonthInterval;
-            billSchedule.BeginDate = viewModel.BeginDate;
-            billSchedule.EndDate = viewModel.EndDate;
-            billSchedule.UpdatedUser = userId;
-            billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
-
-            _context.Update(billSchedule);
-            await _context.SaveChangesAsync();
-
-            // Log the operation
-            _logger.LogInformation($"User {userId} updated bill schedule {billSchedule.Id}");
-
-            return Ok(new BillScheduleViewModel
+            var retViewModel = new BillScheduleViewModel
             {
                 Id = billSchedule.Id,
                 Name = billSchedule.Name,
@@ -195,7 +119,83 @@ namespace Chabloom.Billing.Backend.Controllers
                 EndDate = billSchedule.EndDate,
                 TransactionScheduleId = billSchedule.TransactionScheduleId,
                 AccountId = billSchedule.AccountId
-            });
+            };
+
+            return Ok(retViewModel);
+        }
+
+        [HttpPut("{id}")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> PutBillSchedule(Guid id, BillScheduleViewModel viewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
+            {
+                return userTenantResult;
+            }
+
+            // Find the specified bill schedule
+            var billSchedule = await _context.BillSchedules
+                .FindAsync(id);
+            if (billSchedule == null)
+            {
+                return NotFound();
+            }
+
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(billSchedule, tenantId.Value);
+            if (!tenantValid)
+            {
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
+            }
+
+            billSchedule.Name = viewModel.Name;
+            billSchedule.Amount = viewModel.Amount;
+            billSchedule.CurrencyId = viewModel.CurrencyId;
+            billSchedule.Day = viewModel.Day;
+            billSchedule.MonthInterval = viewModel.MonthInterval;
+            billSchedule.BeginDate = viewModel.BeginDate;
+            billSchedule.EndDate = viewModel.EndDate;
+            billSchedule.UpdatedUser = userId.Value;
+            billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(billSchedule);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"User {userId} updated bill schedule {billSchedule.Id}");
+
+            var retViewModel = new BillScheduleViewModel
+            {
+                Id = billSchedule.Id,
+                Name = billSchedule.Name,
+                Amount = billSchedule.Amount,
+                CurrencyId = billSchedule.CurrencyId,
+                Day = billSchedule.Day,
+                MonthInterval = billSchedule.MonthInterval,
+                BeginDate = billSchedule.BeginDate,
+                EndDate = billSchedule.EndDate,
+                TransactionScheduleId = billSchedule.TransactionScheduleId,
+                AccountId = billSchedule.AccountId
+            };
+
+            return Ok(retViewModel);
         }
 
         [HttpPost]
@@ -203,44 +203,20 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<BillScheduleViewModel>> PostBillSchedule(
-            BillScheduleViewModel viewModel)
+        public async Task<IActionResult> PostBillSchedule(BillScheduleViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (viewModel == null)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return BadRequest();
+                return userTenantResult;
             }
 
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
-            // Find the specified account
-            var account = await _context.Accounts
-                .FirstOrDefaultAsync(x => x.Id == viewModel.AccountId);
-            if (account == null)
-            {
-                _logger.LogWarning("Could not find account for bill schedule");
-                return BadRequest("Invalid account");
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to create bill schedules");
-                return Forbid();
-            }
-
-            // Create the new bill schedule
             var billSchedule = new BillSchedule
             {
                 Name = viewModel.Name,
@@ -250,19 +226,44 @@ namespace Chabloom.Billing.Backend.Controllers
                 MonthInterval = viewModel.MonthInterval,
                 BeginDate = viewModel.BeginDate,
                 EndDate = viewModel.EndDate,
-                Account = account,
-                CreatedUser = userId
+                AccountId = viewModel.AccountId,
+                CreatedUser = userId.Value
             };
+
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(billSchedule, tenantId.Value);
+            if (!tenantValid)
+            {
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
+            }
 
             await _context.AddAsync(billSchedule);
             await _context.SaveChangesAsync();
 
-            // Log the operation
             _logger.LogInformation($"User {userId} created bill schedule {billSchedule.Id}");
 
-            viewModel.Id = billSchedule.Id;
+            var retViewModel = new BillScheduleViewModel
+            {
+                Id = billSchedule.Id,
+                Name = billSchedule.Name,
+                Amount = billSchedule.Amount,
+                CurrencyId = billSchedule.CurrencyId,
+                Day = billSchedule.Day,
+                MonthInterval = billSchedule.MonthInterval,
+                BeginDate = billSchedule.BeginDate,
+                EndDate = billSchedule.EndDate,
+                TransactionScheduleId = billSchedule.TransactionScheduleId,
+                AccountId = billSchedule.AccountId
+            };
 
-            return CreatedAtAction("GetBillSchedule", new {id = viewModel.Id}, viewModel);
+            return Ok(retViewModel);
         }
 
         [HttpDelete("{id}")]
@@ -272,43 +273,99 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteBillSchedule(Guid id)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
+                return userTenantResult;
             }
 
             // Find the specified bill schedule
             var billSchedule = await _context.BillSchedules
-                // Include the account
-                .Include(x => x.Account)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FindAsync(id);
             if (billSchedule == null)
             {
                 _logger.LogWarning($"User id {userId} attempted to delete unknown bill schedule {id}");
                 return NotFound();
             }
 
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, billSchedule.Account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(billSchedule, tenantId.Value);
+            if (!tenantValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to delete bill schedule {id}");
-                return Forbid();
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
             }
 
             // Disable the bill schedule
             billSchedule.Disabled = true;
-            billSchedule.DisabledUser = userId;
+            billSchedule.DisabledUser = userId.Value;
             billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(billSchedule);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation($"User {userId} disabled bill schedule {billSchedule.Id}");
+
             return NoContent();
+        }
+
+        private async Task<Tuple<Guid?, Guid?, IActionResult>> GetUserTenantAsync()
+        {
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (!userId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            return new Tuple<Guid?, Guid?, IActionResult>(userId, tenantId, Forbid());
+        }
+
+        private async Task<Tuple<bool, IActionResult>> ValidateTenantAsync(BillSchedule billSchedule, Guid tenantId)
+        {
+            // Find the specified account
+            var account = await _context.Accounts
+                .FindAsync(billSchedule.AccountId);
+            if (account == null)
+            {
+                return new Tuple<bool, IActionResult>(false, NotFound());
+            }
+
+            // Ensure the user is calling this endpoint from the correct tenant
+            if (account.TenantId != tenantId)
+            {
+                return new Tuple<bool, IActionResult>(false, Forbid());
+            }
+
+            return new Tuple<bool, IActionResult>(true, Ok());
+        }
+
+        private async Task<Tuple<bool, IActionResult>> ValidateRoleAccessAsync(Guid userId, Guid tenantId)
+        {
+            // Ensure the user is authorized at the requested level
+            var userRoles = await _validator.GetTenantRolesAsync(userId, tenantId);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to perform requested operation");
+                return new Tuple<bool, IActionResult>(false, Forbid());
+            }
+
+            return new Tuple<bool, IActionResult>(true, Ok());
         }
     }
 }

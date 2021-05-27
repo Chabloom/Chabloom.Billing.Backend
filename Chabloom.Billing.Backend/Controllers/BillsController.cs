@@ -54,7 +54,9 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Get all bills
             var bills = await _context.Bills
+                .Include(x => x.Account)
                 .Where(x => x.AccountId == accountId)
+                .Where(x => x.Account.TenantId == tenantId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync();
@@ -237,7 +239,6 @@ namespace Chabloom.Billing.Backend.Controllers
             await _context.AddAsync(bill);
             await _context.SaveChangesAsync();
 
-            // Log the operation
             _logger.LogInformation($"User {userId} created bill {bill.Id}");
 
             var retViewModel = new BillViewModel
