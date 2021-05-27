@@ -39,30 +39,21 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(403)]
         public async Task<IActionResult> GetAccountsAsync()
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (!userId.HasValue)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
-            }
-
-            // Get the current tenant id
-            var tenantId = await _validator.GetTenantIdAsync(Request);
-            if (!tenantId.HasValue)
-            {
-                return NotFound();
+                return userTenantResult;
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
-            if (!userRoles.Contains("Admin") &&
-                !userRoles.Contains("Manager"))
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to access accounts");
-                return Forbid();
+                return roleResult;
             }
 
-            // Get all accounts the user is authorized to view
+            // Get all accounts
             var accounts = await _context.Accounts
                 .Where(x => x.TenantId == tenantId)
                 // Don't include disabled items
@@ -73,7 +64,6 @@ namespace Chabloom.Billing.Backend.Controllers
                 return Ok(new List<AccountViewModel>());
             }
 
-            // Convert to view models
             var viewModels = accounts
                 .Select(x => new AccountViewModel
                 {
@@ -93,20 +83,13 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
+        public async Task<IActionResult> GetAccount(Guid id)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (!userId.HasValue)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
-            }
-
-            // Get the current tenant id
-            var tenantId = await _validator.GetTenantIdAsync(Request);
-            if (!tenantId.HasValue)
-            {
-                return NotFound();
+                return userTenantResult;
             }
 
             // Find the specified account
@@ -117,10 +100,11 @@ namespace Chabloom.Billing.Backend.Controllers
                 return NotFound();
             }
 
-            // Ensure the user is calling this endpoint from the correct tenant
-            if (account.TenantId != tenantId)
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
+            if (!tenantValid)
             {
-                return Forbid();
+                return tenantResult;
             }
 
             var retViewModel = new AccountViewModel
@@ -141,30 +125,18 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<AccountViewModel>> PutAccount(Guid id, AccountViewModel viewModel)
+        public async Task<IActionResult> PutAccount(Guid id, AccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (viewModel == null || id != viewModel.Id)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return BadRequest();
-            }
-
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (!userId.HasValue)
-            {
-                return Forbid();
-            }
-
-            // Get the current tenant id
-            var tenantId = await _validator.GetTenantIdAsync(Request);
-            if (!tenantId.HasValue)
-            {
-                return NotFound();
+                return userTenantResult;
             }
 
             // Find the specified account
@@ -175,13 +147,18 @@ namespace Chabloom.Billing.Backend.Controllers
                 return NotFound();
             }
 
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
-            if (!userRoles.Contains("Admin") &&
-                !userRoles.Contains("Manager"))
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
+            if (!tenantValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to update accounts");
-                return Forbid();
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
             }
 
             account.Name = viewModel.Name;
@@ -212,39 +189,18 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> PostAccount(AccountViewModel viewModel)
+        public async Task<IActionResult> PostAccount(AccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (viewModel == null)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return BadRequest();
-            }
-
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (!userId.HasValue)
-            {
-                return Forbid();
-            }
-
-            // Get the current tenant id
-            var tenantId = await _validator.GetTenantIdAsync(Request);
-            if (!tenantId.HasValue)
-            {
-                return NotFound();
-            }
-
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
-            if (!userRoles.Contains("Admin") &&
-                !userRoles.Contains("Manager"))
-            {
-                _logger.LogWarning($"User id {userId} was not authorized to update accounts");
-                return Forbid();
+                return userTenantResult;
             }
 
             var account = new Account
@@ -255,6 +211,20 @@ namespace Chabloom.Billing.Backend.Controllers
                 TenantId = tenantId.Value,
                 CreatedUser = userId.Value
             };
+
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
+            if (!tenantValid)
+            {
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
+            }
 
             await _context.AddAsync(account);
             await _context.SaveChangesAsync();
@@ -280,18 +250,11 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteAccount(Guid id)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (!userId.HasValue)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
-            }
-
-            // Get the current tenant id
-            var tenantId = await _validator.GetTenantIdAsync(Request);
-            if (!tenantId.HasValue)
-            {
-                return NotFound();
+                return userTenantResult;
             }
 
             // Find the specified account
@@ -302,13 +265,18 @@ namespace Chabloom.Billing.Backend.Controllers
                 return NotFound();
             }
 
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
-            if (!userRoles.Contains("Admin") &&
-                !userRoles.Contains("Manager"))
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
+            if (!tenantValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to update accounts");
-                return Forbid();
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
             }
 
             account.Disabled = true;
@@ -318,7 +286,53 @@ namespace Chabloom.Billing.Backend.Controllers
             _context.Update(account);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation($"User {userId} disabled account {account.Id}");
+
             return NoContent();
+        }
+
+        private async Task<Tuple<Guid?, Guid?, IActionResult>> GetUserTenantAsync()
+        {
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (!userId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            return new Tuple<Guid?, Guid?, IActionResult>(userId, tenantId, Forbid());
+        }
+
+        private Task<Tuple<bool, IActionResult>> ValidateTenantAsync(Account account, Guid tenantId)
+        {
+            // Ensure the user is calling this endpoint from the correct tenant
+            if (account.TenantId != tenantId)
+            {
+                return Task.FromResult(new Tuple<bool, IActionResult>(false, Forbid()));
+            }
+
+            return Task.FromResult(new Tuple<bool, IActionResult>(true, Ok()));
+        }
+
+        private async Task<Tuple<bool, IActionResult>> ValidateRoleAccessAsync(Guid userId, Guid tenantId)
+        {
+            // Ensure the user is authorized at the requested level
+            var userRoles = await _validator.GetTenantRolesAsync(userId, tenantId);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to perform requested operation");
+                return new Tuple<bool, IActionResult>(false, Forbid());
+            }
+
+            return new Tuple<bool, IActionResult>(true, Ok());
         }
     }
 }

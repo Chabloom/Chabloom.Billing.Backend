@@ -25,8 +25,7 @@ namespace Chabloom.Billing.Backend.Controllers
         private readonly ILogger<BillsController> _logger;
         private readonly IValidator _validator;
 
-        public BillsController(ApplicationDbContext context, ILogger<BillsController> logger,
-            IValidator validator)
+        public BillsController(ApplicationDbContext context, ILogger<BillsController> logger, IValidator validator)
         {
             _context = context;
             _logger = logger;
@@ -34,24 +33,36 @@ namespace Chabloom.Billing.Backend.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<BillViewModel>>> GetBills(Guid accountId)
+        public async Task<IActionResult> GetBills(Guid accountId)
         {
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
+            {
+                return userTenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
+            }
+
             // Get all bills
             var bills = await _context.Bills
                 .Where(x => x.AccountId == accountId)
                 // Don't include deleted items
                 .Where(x => !x.Disabled)
                 .ToListAsync();
-            if (bills == null || !bills.Any())
+            if (bills == null)
             {
-                return new List<BillViewModel>();
+                return Ok(new List<BillViewModel>());
             }
 
-            // Convert to view models
             var viewModels = bills
                 .Select(x => new BillViewModel
                 {
@@ -73,100 +84,32 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<Bill>> GetBill(Guid id)
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> GetBill(Guid id)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
+                return userTenantResult;
             }
 
             // Find the specified bill
-            var viewModel = await _context.Bills
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .Select(x => new BillViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Amount = x.Amount,
-                    CurrencyId = x.CurrencyId,
-                    DueDate = x.DueDate,
-                    TransactionId = x.TransactionId,
-                    AccountId = x.AccountId
-                })
-                .FirstOrDefaultAsync(x => x.Id == id);
-            if (viewModel == null)
-            {
-                _logger.LogWarning($"User id {userId} attempted to access unknown bill {id}");
-                return NotFound();
-            }
-
-            // Log the operation
-            _logger.LogInformation($"User {userId} read bill {viewModel.Id}");
-
-            return Ok(viewModel);
-        }
-
-        [HttpPut("{id}")]
-        [ProducesResponseType(204)]
-        [ProducesResponseType(400)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<BillViewModel>> PutBill(Guid id, BillViewModel viewModel)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (viewModel == null || id != viewModel.Id)
-            {
-                return BadRequest();
-            }
-
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
             var bill = await _context.Bills
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FindAsync(id);
             if (bill == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to update unknown bill {id}");
                 return NotFound();
             }
 
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, bill.Account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            if (!tenantValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to update bill {id}");
-                return Forbid();
+                return tenantResult;
             }
 
-            // Update the bill
-            bill.Name = viewModel.Name;
-            bill.Amount = viewModel.Amount;
-            bill.CurrencyId = viewModel.CurrencyId;
-            bill.DueDate = viewModel.DueDate;
-            bill.UpdatedUser = userId;
-            bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
-
-            _context.Update(bill);
-            await _context.SaveChangesAsync();
-
-            // Log the operation
-            _logger.LogInformation($"User {userId} updated bill {bill.Id}");
-
-            return Ok(new BillViewModel
+            var retViewModel = new BillViewModel
             {
                 Id = bill.Id,
                 Name = bill.Name,
@@ -175,60 +118,121 @@ namespace Chabloom.Billing.Backend.Controllers
                 DueDate = bill.DueDate,
                 TransactionId = bill.TransactionId,
                 AccountId = bill.AccountId
-            });
+            };
+
+            return Ok(retViewModel);
         }
 
-        [HttpPost]
-        [ProducesResponseType(201)]
+        [HttpPut("{id}")]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<BillViewModel>> PostBill(BillViewModel viewModel)
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> PutBill(Guid id, BillViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (viewModel == null)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return BadRequest();
+                return userTenantResult;
             }
 
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Find the specified bill
+            var bill = await _context.Bills
+                .FindAsync(id);
+            if (bill == null)
             {
-                return Forbid();
+                return NotFound();
             }
 
-            // Find the specified account
-            var account = await _context.Accounts
-                .FirstOrDefaultAsync(x => x.Id == viewModel.AccountId);
-            if (account == null)
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            if (!tenantValid)
             {
-                _logger.LogWarning("Could not find account for bill schedule");
-                return BadRequest("Invalid account");
+                return tenantResult;
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to create bills");
-                return Forbid();
+                return roleResult;
             }
 
-            // Create the new bill
+            bill.Name = viewModel.Name;
+            bill.Amount = viewModel.Amount;
+            bill.CurrencyId = viewModel.CurrencyId;
+            bill.DueDate = viewModel.DueDate;
+            bill.UpdatedUser = userId.Value;
+            bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
+
+            _context.Update(bill);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"User {userId} updated bill {bill.Id}");
+
+            var retViewModel = new BillViewModel
+            {
+                Id = bill.Id,
+                Name = bill.Name,
+                Amount = bill.Amount,
+                CurrencyId = bill.CurrencyId,
+                DueDate = bill.DueDate,
+                TransactionId = bill.TransactionId,
+                AccountId = bill.AccountId
+            };
+
+            return Ok(retViewModel);
+        }
+
+        [HttpPost]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        public async Task<IActionResult> PostBill(BillViewModel viewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
+            {
+                return userTenantResult;
+            }
+
             var bill = new Bill
             {
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
                 CurrencyId = viewModel.CurrencyId,
                 DueDate = viewModel.DueDate,
-                Account = account,
-                CreatedUser = userId
+                AccountId = viewModel.AccountId,
+                CreatedUser = userId.Value
             };
+
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            if (!tenantValid)
+            {
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
+            }
 
             await _context.AddAsync(bill);
             await _context.SaveChangesAsync();
@@ -236,9 +240,18 @@ namespace Chabloom.Billing.Backend.Controllers
             // Log the operation
             _logger.LogInformation($"User {userId} created bill {bill.Id}");
 
-            viewModel.Id = bill.Id;
+            var retViewModel = new BillViewModel
+            {
+                Id = bill.Id,
+                Name = bill.Name,
+                Amount = bill.Amount,
+                CurrencyId = bill.CurrencyId,
+                DueDate = bill.DueDate,
+                TransactionId = bill.TransactionId,
+                AccountId = bill.AccountId
+            };
 
-            return CreatedAtAction("GetBill", new {id = viewModel.Id}, viewModel);
+            return Ok(retViewModel);
         }
 
         [HttpDelete("{id}")]
@@ -248,43 +261,98 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(404)]
         public async Task<IActionResult> DeleteBill(Guid id)
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
+                return userTenantResult;
             }
 
             // Find the specified bill
             var bill = await _context.Bills
-                // Include the account
-                .Include(x => x.Account)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FindAsync(id);
             if (bill == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to delete unknown bill {id}");
                 return NotFound();
             }
 
-            // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, bill.Account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            if (!tenantValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to delete bill {id}");
-                return Forbid();
+                return tenantResult;
+            }
+
+            // Ensure the user is authorized at the requested level
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
+            if (!roleValid)
+            {
+                return roleResult;
             }
 
             // Disable the bill
             bill.Disabled = true;
-            bill.DisabledUser = userId;
+            bill.DisabledUser = userId.Value;
             bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(bill);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation($"User {userId} disabled bill {bill.Id}");
+
             return NoContent();
+        }
+
+        private async Task<Tuple<Guid?, Guid?, IActionResult>> GetUserTenantAsync()
+        {
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (!userId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            return new Tuple<Guid?, Guid?, IActionResult>(userId, tenantId, Forbid());
+        }
+
+        private async Task<Tuple<bool, IActionResult>> ValidateTenantAsync(Bill bill, Guid tenantId)
+        {
+            // Find the specified account
+            var account = await _context.Accounts
+                .FindAsync(bill.AccountId);
+            if (account == null)
+            {
+                return new Tuple<bool, IActionResult>(false, NotFound());
+            }
+
+            // Ensure the user is calling this endpoint from the correct tenant
+            if (account.TenantId != tenantId)
+            {
+                return new Tuple<bool, IActionResult>(false, Forbid());
+            }
+
+            return new Tuple<bool, IActionResult>(true, Ok());
+        }
+
+        private async Task<Tuple<bool, IActionResult>> ValidateRoleAccessAsync(Guid userId, Guid tenantId)
+        {
+            // Ensure the user is authorized at the requested level
+            var userRoles = await _validator.GetTenantRolesAsync(userId, tenantId);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to perform requested operation");
+                return new Tuple<bool, IActionResult>(false, Forbid());
+            }
+
+            return new Tuple<bool, IActionResult>(true, Ok());
         }
     }
 }
