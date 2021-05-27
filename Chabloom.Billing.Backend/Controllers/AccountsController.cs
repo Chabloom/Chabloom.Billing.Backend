@@ -37,18 +37,26 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccounts(Guid tenantId)
+        public async Task<IActionResult> GetAccountsAsync()
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
             }
 
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return NotFound();
+            }
+
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, tenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
             {
                 _logger.LogWarning($"User id {userId} was not authorized to access accounts");
                 return Forbid();
@@ -57,12 +65,12 @@ namespace Chabloom.Billing.Backend.Controllers
             // Get all accounts the user is authorized to view
             var accounts = await _context.Accounts
                 .Where(x => x.TenantId == tenantId)
-                // Don't include deleted items
+                // Don't include disabled items
                 .Where(x => !x.Disabled)
                 .ToListAsync();
             if (accounts == null)
             {
-                return new List<AccountViewModel>();
+                return Ok(new List<AccountViewModel>());
             }
 
             // Convert to view models
@@ -80,112 +88,55 @@ namespace Chabloom.Billing.Backend.Controllers
             return Ok(viewModels);
         }
 
-        [HttpGet("Authorized")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        public async Task<ActionResult<IEnumerable<AccountViewModel>>> GetAccountsAuthorized()
-        {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
-            {
-                return Forbid();
-            }
-
-            // Get all accounts the user is authorized to view
-            var userAccounts = await _context.UserAccounts
-                .Include(x => x.Account)
-                .Where(x => x.UserId == userId)
-                .Select(x => x.Account)
-                .ToListAsync();
-            if (!userAccounts.Any())
-            {
-                return new List<AccountViewModel>();
-            }
-
-            // Convert to view models
-            var viewModels = userAccounts
-                .Select(x => new AccountViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Address = x.Address,
-                    ReferenceId = x.ReferenceId,
-                    TenantId = x.TenantId
-                })
-                .ToList();
-
-            return Ok(viewModels);
-        }
-
         [HttpGet("{id}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
         public async Task<ActionResult<AccountViewModel>> GetAccount(Guid id)
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
             }
 
-            // Find the specified account if the user has access to it
-            var viewModel = await _context.Accounts
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .Select(x => new AccountViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Address = x.Address,
-                    ReferenceId = x.ReferenceId,
-                    TenantId = x.TenantId
-                })
-                .FirstOrDefaultAsync(x => x.Id == id);
-            if (viewModel == null)
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
             {
-                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
                 return NotFound();
             }
 
-            return Ok(viewModel);
-        }
-
-        [HttpGet("Reference/{id}")]
-        [AllowAnonymous]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(401)]
-        [ProducesResponseType(403)]
-        public async Task<ActionResult<AccountViewModel>> GetAccountReference(string id, Guid tenantId)
-        {
-            // Find the specified account if the user has access to it
-            var viewModel = await _context.Accounts
-                .Where(x => x.TenantId == tenantId)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .Select(x => new AccountViewModel
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Address = x.Address,
-                    ReferenceId = x.ReferenceId,
-                    TenantId = x.TenantId
-                })
-                .FirstOrDefaultAsync(x => x.ReferenceId == id);
-            if (viewModel == null)
+            // Find the specified account
+            var account = await _context.Accounts
+                .FindAsync(id);
+            if (account == null)
             {
-                _logger.LogWarning($"User attempted to access unknown account {id}");
                 return NotFound();
             }
 
-            return Ok(viewModel);
+            // Ensure the user is calling this endpoint from the correct tenant
+            if (account.TenantId != tenantId)
+            {
+                return Forbid();
+            }
+
+            var retViewModel = new AccountViewModel
+            {
+                Id = account.Id,
+                Name = account.Name,
+                Address = account.Address,
+                ReferenceId = account.ReferenceId,
+                TenantId = account.TenantId
+            };
+
+            return Ok(retViewModel);
         }
 
         [HttpPut("{id}")]
-        [ProducesResponseType(204)]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
@@ -204,54 +155,60 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
             }
 
-            // Find the specified account if the user has access to it
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return NotFound();
+            }
+
+            // Find the specified account
             var account = await _context.Accounts
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FindAsync(id);
             if (account == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
                 return NotFound();
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
             {
-                _logger.LogWarning($"User id {userId} was not authorized to update account {id}");
+                _logger.LogWarning($"User id {userId} was not authorized to update accounts");
                 return Forbid();
             }
 
-            // Update the account
             account.Name = viewModel.Name;
             account.Address = viewModel.Address;
             account.ReferenceId = viewModel.ReferenceId;
-            account.UpdatedUser = userId;
+            account.UpdatedUser = userId.Value;
             account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"User {userId} updated account {id}");
+            _logger.LogInformation($"User {userId} updated account {account.Id}");
 
-            return Ok(new AccountViewModel
+            var retViewModel = new AccountViewModel
             {
                 Id = account.Id,
                 Name = account.Name,
                 Address = account.Address,
                 ReferenceId = account.ReferenceId,
                 TenantId = account.TenantId
-            });
+            };
+
+            return Ok(retViewModel);
         }
 
         [HttpPost]
-        [ProducesResponseType(201)]
+        [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
@@ -269,47 +226,51 @@ namespace Chabloom.Billing.Backend.Controllers
 
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
+            }
+
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return NotFound();
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, viewModel.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
             {
-                _logger.LogWarning(
-                    $"User id {userId} was not authorized to create accounts for tenant {viewModel.TenantId}");
+                _logger.LogWarning($"User id {userId} was not authorized to update accounts");
                 return Forbid();
             }
 
-            // Find the specified tenant
-            var tenant = await _context.Tenants
-                .FindAsync(viewModel.TenantId);
-            if (tenant == null)
-            {
-                _logger.LogWarning($"Specified tenant {viewModel.TenantId} could not be found");
-                return BadRequest();
-            }
-
-            // Create the new account
             var account = new Account
             {
                 Name = viewModel.Name,
                 Address = viewModel.Address,
                 ReferenceId = viewModel.ReferenceId,
-                Tenant = tenant,
-                CreatedUser = userId
+                TenantId = tenantId.Value,
+                CreatedUser = userId.Value
             };
 
-            await _context.Accounts.AddAsync(account);
+            await _context.AddAsync(account);
             await _context.SaveChangesAsync();
 
-            viewModel.Id = account.Id;
+            _logger.LogInformation($"User {userId} created account {account.Id}");
 
-            _logger.LogInformation($"User {userId} created account {account.Id} for tenant {tenant.Id}");
+            var retViewModel = new AccountViewModel
+            {
+                Id = account.Id,
+                Name = account.Name,
+                Address = account.Address,
+                ReferenceId = account.ReferenceId,
+                TenantId = account.TenantId
+            };
 
-            return CreatedAtAction("GetAccount", new {id = viewModel.Id}, viewModel);
+            return Ok(retViewModel);
         }
 
         [HttpDelete("{id}")]
@@ -321,34 +282,37 @@ namespace Chabloom.Billing.Backend.Controllers
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
             }
 
-            // Find the specified account if the user has access to it
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return NotFound();
+            }
+
+            // Find the specified account
             var account = await _context.Accounts
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FindAsync(id);
             if (account == null)
             {
-                _logger.LogWarning($"User id {userId} attempted to access unknown account {id}");
                 return NotFound();
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, account.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var userRoles = await _validator.GetTenantRolesAsync(userId.Value, tenantId.Value);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
             {
-                _logger.LogWarning(
-                    $"User id {userId} was not authorized to delete accounts for tenant {account.TenantId}");
+                _logger.LogWarning($"User id {userId} was not authorized to update accounts");
                 return Forbid();
             }
 
-            // Disable the account
             account.Disabled = true;
-            account.DisabledUser = userId;
+            account.DisabledUser = userId.Value;
             account.DisabledTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(account);
