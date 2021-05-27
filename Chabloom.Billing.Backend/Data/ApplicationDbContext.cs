@@ -74,6 +74,9 @@ namespace Chabloom.Billing.Backend.Data
 
             #region Application tables
 
+            modelBuilder.Entity<Account>()
+                .HasAlternateKey(x => new {x.TenantId, x.ReferenceId});
+
             // Set up key for join table
             modelBuilder.Entity<UserAccount>()
                 .HasKey(x => new {x.UserId, x.AccountId});
