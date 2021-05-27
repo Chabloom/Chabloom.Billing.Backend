@@ -41,17 +41,16 @@ namespace Chabloom.Billing.Backend.Controllers.MultiTenant
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, tenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId);
+            if (!roleValid)
             {
-                _logger.LogWarning($"User id {userId} was not authorized to read addresses for tenant {tenantId}");
-                return Forbid();
+                return roleResult;
             }
 
             // Get all tenant addresses for the tenant
@@ -90,18 +89,16 @@ namespace Chabloom.Billing.Backend.Controllers.MultiTenant
 
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, viewModel.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, viewModel.TenantId);
+            if (!roleValid)
             {
-                _logger.LogWarning(
-                    $"User id {userId} was not authorized to create addresses for tenant {viewModel.TenantId}");
-                return Forbid();
+                return roleResult;
             }
 
             // Ensure the tenant address does not yet exist
@@ -144,18 +141,16 @@ namespace Chabloom.Billing.Backend.Controllers.MultiTenant
 
             // Get the user id
             var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            if (!userId.HasValue)
             {
                 return Forbid();
             }
 
             // Ensure the user is authorized at the requested level
-            var userRoles = await _validator.GetTenantRolesAsync(userId, viewModel.TenantId);
-            if (!userRoles.Contains("Admin") && !userRoles.Contains("Manager"))
+            var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, viewModel.TenantId);
+            if (!roleValid)
             {
-                _logger.LogWarning(
-                    $"User id {userId} was not authorized to delete addresses for tenant {viewModel.TenantId}");
-                return Forbid();
+                return roleResult;
             }
 
             // Find the specified tenant address
@@ -174,6 +169,20 @@ namespace Chabloom.Billing.Backend.Controllers.MultiTenant
                 $"User {userId} removed tenant address {viewModel.Address} from tenant {viewModel.TenantId}");
 
             return Ok();
+        }
+
+        private async Task<Tuple<bool, IActionResult>> ValidateRoleAccessAsync(Guid userId, Guid tenantId)
+        {
+            // Ensure the user is authorized at the requested level
+            var userRoles = await _validator.GetTenantRolesAsync(userId, tenantId);
+            if (!userRoles.Contains("Admin") &&
+                !userRoles.Contains("Manager"))
+            {
+                _logger.LogWarning($"User id {userId} was not authorized to perform requested operation");
+                return new Tuple<bool, IActionResult>(false, Forbid());
+            }
+
+            return new Tuple<bool, IActionResult>(true, Ok());
         }
     }
 }
