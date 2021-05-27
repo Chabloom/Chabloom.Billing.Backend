@@ -63,7 +63,7 @@ namespace Chabloom.Billing.Backend.Services
             return null;
         }
 
-        public async Task<IList<string>> GetGetTenantRoleNamesAsync(Guid userId, Guid tenantId)
+        public async Task<IList<string>> GetTenantRolesAsync(Guid userId, Guid tenantId)
         {
             // Attempt to find the user in the tenant users
             var user = await _context.Users

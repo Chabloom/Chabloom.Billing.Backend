@@ -30,6 +30,6 @@ namespace Chabloom.Billing.Backend.Services
         /// <param name="userId">The user id</param>
         /// <param name="tenantId">The tenant id</param>
         /// <returns>A list of all roles the user has access to</returns>
-        public Task<IList<string>> GetGetTenantRoleNamesAsync(Guid userId, Guid tenantId);
+        public Task<IList<string>> GetTenantRolesAsync(Guid userId, Guid tenantId);
     }
 }
