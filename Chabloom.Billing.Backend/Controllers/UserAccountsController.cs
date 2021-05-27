@@ -37,18 +37,18 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<IActionResult> GetUserAccounts([FromQuery] Guid tenantId)
+        public async Task<IActionResult> GetUserAccountsAsync()
         {
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
+                return userTenantResult;
             }
 
-            // Get all accounts the user is tracking
+            // Get all user accounts
             var userAccounts = await _context.UserAccounts
-                .Include(x => x.AccountId)
+                .Include(x => x.Account)
                 .Where(x => x.Account.TenantId == tenantId)
                 .Where(x => x.UserId == userId)
                 .ToListAsync();
@@ -57,7 +57,6 @@ namespace Chabloom.Billing.Backend.Controllers
                 return Ok(new List<UserAccountViewModel>());
             }
 
-            // Convert to view models
             var viewModels = userAccounts
                 .Select(x => new UserAccountViewModel
                 {
@@ -75,26 +74,18 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(409)]
-        public async Task<IActionResult> CreateUserAccount([FromBody] UserAccountViewModel viewModel)
+        public async Task<IActionResult> CreateUserAccountAsync([FromBody] UserAccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
-            }
-
-            // Find the specified account
-            var account = await _context.Accounts
-                .FindAsync(viewModel.AccountId);
-            if (account == null)
-            {
-                return BadRequest();
+                return userTenantResult;
             }
 
             // Ensure the user account does not yet exist
@@ -109,9 +100,16 @@ namespace Chabloom.Billing.Backend.Controllers
             // Create the new account
             userAccount = new UserAccount
             {
-                UserId = userId,
+                UserId = viewModel.UserId,
                 AccountId = viewModel.AccountId
             };
+
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(userAccount, tenantId.Value);
+            if (!tenantValid)
+            {
+                return tenantResult;
+            }
 
             await _context.AddAsync(userAccount);
             await _context.SaveChangesAsync();
@@ -127,18 +125,18 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> DeleteUserAccount([FromBody] UserAccountViewModel viewModel)
+        public async Task<IActionResult> DeleteUserAccountAsync([FromBody] UserAccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            // Get the user id
-            var userId = _validator.GetUserId(User);
-            if (userId == Guid.Empty)
+            // Get the user and tenant id
+            var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!userId.HasValue || !tenantId.HasValue)
             {
-                return Forbid();
+                return userTenantResult;
             }
 
             // Find the specified user account
@@ -150,12 +148,57 @@ namespace Chabloom.Billing.Backend.Controllers
                 return NotFound();
             }
 
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(userAccount, tenantId.Value);
+            if (!tenantValid)
+            {
+                return tenantResult;
+            }
+
             _context.Remove(userAccount);
             await _context.SaveChangesAsync();
 
             _logger.LogInformation($"User {userId} stopped tracking account {userAccount.AccountId}");
 
             return Ok();
+        }
+
+        private async Task<Tuple<Guid?, Guid?, IActionResult>> GetUserTenantAsync()
+        {
+            // Get the user id
+            var userId = _validator.GetUserId(User);
+            if (!userId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return new Tuple<Guid?, Guid?, IActionResult>(null, null, Forbid());
+            }
+
+            return new Tuple<Guid?, Guid?, IActionResult>(userId, tenantId, Forbid());
+        }
+
+        private async Task<Tuple<bool, IActionResult>> ValidateTenantAsync(UserAccount userAccount, Guid tenantId)
+        {
+            // Find the specified account
+            var account = await _context.Accounts
+                .FindAsync(userAccount.AccountId);
+            if (account == null)
+            {
+                return new Tuple<bool, IActionResult>(false, NotFound());
+            }
+
+            // Ensure the user is calling this endpoint from the correct tenant
+            if (account.TenantId != tenantId)
+            {
+                return new Tuple<bool, IActionResult>(false, Forbid());
+            }
+
+            return new Tuple<bool, IActionResult>(true, Ok());
         }
     }
 }
