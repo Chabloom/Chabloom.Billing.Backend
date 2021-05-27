@@ -3,6 +3,7 @@
 using System;
 using Chabloom.Billing.Backend.Models;
 using Chabloom.Billing.Backend.Models.Auth;
+using Chabloom.Billing.Backend.Models.MultiTenant;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;

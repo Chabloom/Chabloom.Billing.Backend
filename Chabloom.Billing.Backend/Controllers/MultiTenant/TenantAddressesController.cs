@@ -5,15 +5,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
-using Chabloom.Billing.Backend.Models.Auth;
+using Chabloom.Billing.Backend.Models.MultiTenant;
 using Chabloom.Billing.Backend.Services;
-using Chabloom.Billing.Backend.ViewModels.Auth;
+using Chabloom.Billing.Backend.ViewModels.MultiTenant;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Chabloom.Billing.Backend.Controllers.Auth
+namespace Chabloom.Billing.Backend.Controllers.MultiTenant
 {
     [Authorize]
     [ApiController]
@@ -37,7 +37,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<IActionResult> GetTenantAddresses([FromQuery] Guid tenantId)
+        public async Task<IActionResult> GetTenantAddressesAsync([FromQuery] Guid tenantId)
         {
             // Get the user id
             var userId = _validator.GetUserId(User);
@@ -81,7 +81,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(409)]
-        public async Task<IActionResult> CreateTenantAddress([FromBody] TenantAddressViewModel viewModel)
+        public async Task<IActionResult> CreateTenantAddressAsync([FromBody] TenantAddressViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -135,7 +135,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> DeleteTenantAddress([FromBody] TenantAddressViewModel viewModel)
+        public async Task<IActionResult> DeleteTenantAddressAsync([FromBody] TenantAddressViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {

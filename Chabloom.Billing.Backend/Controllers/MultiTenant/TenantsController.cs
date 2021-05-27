@@ -4,14 +4,14 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
-using Chabloom.Billing.Backend.ViewModels.Auth;
+using Chabloom.Billing.Backend.Services;
+using Chabloom.Billing.Backend.ViewModels.MultiTenant;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Chabloom.Billing.Backend.Controllers.Auth
+namespace Chabloom.Billing.Backend.Controllers.MultiTenant
 {
     [AllowAnonymous]
     [ApiController]
@@ -21,11 +21,13 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<TenantsController> _logger;
+        private readonly IValidator _validator;
 
-        public TenantsController(ApplicationDbContext context, ILogger<TenantsController> logger)
+        public TenantsController(ApplicationDbContext context, ILogger<TenantsController> logger, IValidator validator)
         {
             _context = context;
             _logger = logger;
+            _validator = validator;
         }
 
         [HttpGet("{id}")]
@@ -33,7 +35,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> GetTenant(Guid id)
+        public async Task<IActionResult> GetTenantAsync(Guid id)
         {
             // Find the specified tenant
             var viewModel = await _context.Tenants
@@ -55,36 +57,20 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> GetCurrentTenant()
+        public async Task<IActionResult> GetCurrentTenantAsync()
         {
-            // Get the referrer address based on the header value
-            var headers = Request.GetTypedHeaders();
-            var referrer = headers.Referer;
-            if (referrer == null)
+            // Get the current tenant
+            var tenant = await _validator.GetCurrentTenantAsync(Request);
+            if (tenant == null)
             {
-                return BadRequest();
-            }
-            var address = referrer.AbsoluteUri;
-            if (string.IsNullOrEmpty(address))
-            {
-                return BadRequest();
-            }
-
-            // Find the tenant belonging to the specified address
-            var tenantAddress = await _context.TenantAddresses
-                .Include(x => x.Tenant)
-                // ReSharper disable once SpecifyStringComparison
-                .FirstOrDefaultAsync(x => x.Address.ToUpper() == address.ToUpper());
-            if (tenantAddress == null)
-            {
-                _logger.LogError($"Could not find tenant for address {address}");
+                _logger.LogWarning($"Could not find tenant for address");
                 return NotFound();
             }
 
             var retViewModel = new TenantViewModel
             {
-                Id = tenantAddress.Tenant.Id,
-                Name = tenantAddress.Tenant.Name
+                Id = tenant.Id,
+                Name = tenant.Name
             };
 
             return Ok(retViewModel);

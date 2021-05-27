@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using Chabloom.Billing.Backend.Models;
 using Chabloom.Billing.Backend.Models.Auth;
+using Chabloom.Billing.Backend.Models.MultiTenant;
 
 // ReSharper disable StringLiteralTypo
 

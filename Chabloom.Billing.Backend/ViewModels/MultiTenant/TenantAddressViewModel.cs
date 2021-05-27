@@ -3,7 +3,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Billing.Backend.ViewModels.Auth
+namespace Chabloom.Billing.Backend.ViewModels.MultiTenant
 {
     public class TenantAddressViewModel
     {

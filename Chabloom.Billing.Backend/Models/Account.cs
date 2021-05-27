@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Chabloom.Billing.Backend.Models.Auth;
+using Chabloom.Billing.Backend.Models.MultiTenant;
 
 namespace Chabloom.Billing.Backend.Models
 {
