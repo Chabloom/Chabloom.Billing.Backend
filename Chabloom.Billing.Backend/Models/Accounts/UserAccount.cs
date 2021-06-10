@@ -2,9 +2,9 @@
 
 using System;
 using System.ComponentModel.DataAnnotations;
-using Chabloom.Billing.Backend.Models.Auth;
+using Chabloom.Billing.Backend.Models.Tenants;
 
-namespace Chabloom.Billing.Backend.Models
+namespace Chabloom.Billing.Backend.Models.Accounts
 {
     public class UserAccount
     {
@@ -12,7 +12,7 @@ namespace Chabloom.Billing.Backend.Models
         public Guid UserId { get; set; }
 
         [Required]
-        public User User { get; set; }
+        public TenantUser TenantUser { get; set; }
 
         [Required]
         public Guid AccountId { get; set; }

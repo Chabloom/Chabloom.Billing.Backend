@@ -2,12 +2,15 @@
 
 using System;
 using System.ComponentModel.DataAnnotations;
+using Chabloom.Billing.Backend.Models.Accounts;
 
-namespace Chabloom.Billing.Backend.ViewModels
+namespace Chabloom.Billing.Backend.Models.Bills
 {
-    public class BillScheduleViewModel
+    public class BillSchedule
     {
-        public Guid Id { get; set; }
+        [Required]
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
         public string Name { get; set; }
@@ -18,19 +21,18 @@ namespace Chabloom.Billing.Backend.ViewModels
         [Required]
         public string CurrencyId { get; set; }
 
+        public string PaymentScheduleId { get; set; }
+
         [Required]
         public int Day { get; set; }
 
         [Required]
         public int MonthInterval { get; set; }
 
-        public DateTime BeginDate { get; set; }
-
-        public DateTime EndDate { get; set; }
-
-        public string TransactionScheduleId { get; set; }
-
         [Required]
         public Guid AccountId { get; set; }
+
+        [Required]
+        public Account Account { get; set; }
     }
 }

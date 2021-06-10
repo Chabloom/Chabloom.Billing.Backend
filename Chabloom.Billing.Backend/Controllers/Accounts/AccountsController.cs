@@ -5,27 +5,28 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
-using Chabloom.Billing.Backend.Models;
+using Chabloom.Billing.Backend.Models.Accounts;
 using Chabloom.Billing.Backend.Services;
-using Chabloom.Billing.Backend.ViewModels;
+using Chabloom.Billing.Backend.ViewModels.Accounts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Chabloom.Billing.Backend.Controllers
+namespace Chabloom.Billing.Backend.Controllers.Accounts
 {
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class BillsController : ControllerBase
+    public class AccountsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly ILogger<BillsController> _logger;
+        private readonly ILogger<AccountsController> _logger;
         private readonly IValidator _validator;
 
-        public BillsController(ApplicationDbContext context, ILogger<BillsController> logger, IValidator validator)
+        public AccountsController(ApplicationDbContext context, ILogger<AccountsController> logger,
+            IValidator validator)
         {
             _context = context;
             _logger = logger;
@@ -36,7 +37,7 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<IActionResult> GetBills(Guid accountId)
+        public async Task<IActionResult> GetAccountsAsync()
         {
             // Get the user and tenant id
             var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
@@ -52,31 +53,26 @@ namespace Chabloom.Billing.Backend.Controllers
                 return roleResult;
             }
 
-            // Get all bills
-            var bills = await _context.Bills
-                .Include(x => x.Account)
-                .Where(x => x.AccountId == accountId)
-                .Where(x => x.Account.TenantId == tenantId)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
+            // Get all accounts
+            var accounts = await _context.Accounts
+                .Where(x => x.TenantId == tenantId)
+                // Don't include disabled items
+                .Where(x => !x.DisabledTimestamp.HasValue)
                 .ToListAsync();
-            if (bills == null)
+            if (accounts == null)
             {
-                return Ok(new List<BillViewModel>());
+                return Ok(new List<AccountViewModel>());
             }
 
-            var viewModels = bills
-                .Select(x => new BillViewModel
+            var viewModels = accounts
+                .Select(x => new AccountViewModel
                 {
                     Id = x.Id,
+                    TenantLookupId = x.TenantLookupId,
                     Name = x.Name,
-                    Amount = x.Amount,
-                    CurrencyId = x.CurrencyId,
-                    DueDate = x.DueDate,
-                    TransactionId = x.TransactionId,
-                    AccountId = x.AccountId
+                    Address = x.Address,
+                    TenantId = x.TenantId
                 })
-                .Distinct()
                 .ToList();
 
             return Ok(viewModels);
@@ -87,7 +83,7 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> GetBill(Guid id)
+        public async Task<IActionResult> GetAccount(Guid id)
         {
             // Get the user and tenant id
             var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
@@ -96,30 +92,28 @@ namespace Chabloom.Billing.Backend.Controllers
                 return userTenantResult;
             }
 
-            // Find the specified bill
-            var bill = await _context.Bills
+            // Find the specified account
+            var account = await _context.Accounts
                 .FindAsync(id);
-            if (bill == null)
+            if (account == null)
             {
                 return NotFound();
             }
 
             // Validate that the endpoint is called from the correct tenant
-            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
             if (!tenantValid)
             {
                 return tenantResult;
             }
 
-            var retViewModel = new BillViewModel
+            var retViewModel = new AccountViewModel
             {
-                Id = bill.Id,
-                Name = bill.Name,
-                Amount = bill.Amount,
-                CurrencyId = bill.CurrencyId,
-                DueDate = bill.DueDate,
-                TransactionId = bill.TransactionId,
-                AccountId = bill.AccountId
+                Id = account.Id,
+                TenantLookupId = account.TenantLookupId,
+                Name = account.Name,
+                Address = account.Address,
+                TenantId = account.TenantId
             };
 
             return Ok(retViewModel);
@@ -131,7 +125,7 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutBill(Guid id, BillViewModel viewModel)
+        public async Task<IActionResult> PutAccount(Guid id, AccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -145,16 +139,16 @@ namespace Chabloom.Billing.Backend.Controllers
                 return userTenantResult;
             }
 
-            // Find the specified bill
-            var bill = await _context.Bills
+            // Find the specified account
+            var account = await _context.Accounts
                 .FindAsync(id);
-            if (bill == null)
+            if (account == null)
             {
                 return NotFound();
             }
 
             // Validate that the endpoint is called from the correct tenant
-            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
             if (!tenantValid)
             {
                 return tenantResult;
@@ -167,27 +161,24 @@ namespace Chabloom.Billing.Backend.Controllers
                 return roleResult;
             }
 
-            bill.Name = viewModel.Name;
-            bill.Amount = viewModel.Amount;
-            bill.CurrencyId = viewModel.CurrencyId;
-            bill.DueDate = viewModel.DueDate;
-            bill.UpdatedUser = userId.Value;
-            bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
+            account.Name = viewModel.Name;
+            account.TenantLookupId = viewModel.TenantLookupId;
+            account.Address = viewModel.Address;
+            account.UpdatedUser = userId.Value;
+            account.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
-            _context.Update(bill);
+            _context.Update(account);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"User {userId} updated bill {bill.Id}");
+            _logger.LogInformation($"User {userId} updated account {account.Id}");
 
-            var retViewModel = new BillViewModel
+            var retViewModel = new AccountViewModel
             {
-                Id = bill.Id,
-                Name = bill.Name,
-                Amount = bill.Amount,
-                CurrencyId = bill.CurrencyId,
-                DueDate = bill.DueDate,
-                TransactionId = bill.TransactionId,
-                AccountId = bill.AccountId
+                Id = account.Id,
+                TenantLookupId = account.TenantLookupId,
+                Name = account.Name,
+                Address = account.Address,
+                TenantId = account.TenantId
             };
 
             return Ok(retViewModel);
@@ -198,7 +189,7 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
-        public async Task<IActionResult> PostBill(BillViewModel viewModel)
+        public async Task<IActionResult> PostAccount(AccountViewModel viewModel)
         {
             if (!ModelState.IsValid)
             {
@@ -212,18 +203,17 @@ namespace Chabloom.Billing.Backend.Controllers
                 return userTenantResult;
             }
 
-            var bill = new Bill
+            var account = new Account
             {
                 Name = viewModel.Name,
-                Amount = viewModel.Amount,
-                CurrencyId = viewModel.CurrencyId,
-                DueDate = viewModel.DueDate,
-                AccountId = viewModel.AccountId,
+                TenantLookupId = viewModel.TenantLookupId,
+                Address = viewModel.Address,
+                TenantId = tenantId.Value,
                 CreatedUser = userId.Value
             };
 
             // Validate that the endpoint is called from the correct tenant
-            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
             if (!tenantValid)
             {
                 return tenantResult;
@@ -236,20 +226,18 @@ namespace Chabloom.Billing.Backend.Controllers
                 return roleResult;
             }
 
-            await _context.AddAsync(bill);
+            await _context.AddAsync(account);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"User {userId} created bill {bill.Id}");
+            _logger.LogInformation($"User {userId} created account {account.Id}");
 
-            var retViewModel = new BillViewModel
+            var retViewModel = new AccountViewModel
             {
-                Id = bill.Id,
-                Name = bill.Name,
-                Amount = bill.Amount,
-                CurrencyId = bill.CurrencyId,
-                DueDate = bill.DueDate,
-                TransactionId = bill.TransactionId,
-                AccountId = bill.AccountId
+                Id = account.Id,
+                TenantLookupId = account.TenantLookupId,
+                Name = account.Name,
+                Address = account.Address,
+                TenantId = account.TenantId
             };
 
             return Ok(retViewModel);
@@ -260,7 +248,7 @@ namespace Chabloom.Billing.Backend.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> DeleteBill(Guid id)
+        public async Task<IActionResult> DeleteAccount(Guid id)
         {
             // Get the user and tenant id
             var (userId, tenantId, userTenantResult) = await GetUserTenantAsync();
@@ -269,16 +257,16 @@ namespace Chabloom.Billing.Backend.Controllers
                 return userTenantResult;
             }
 
-            // Find the specified bill
-            var bill = await _context.Bills
+            // Find the specified account
+            var account = await _context.Accounts
                 .FindAsync(id);
-            if (bill == null)
+            if (account == null)
             {
                 return NotFound();
             }
 
             // Validate that the endpoint is called from the correct tenant
-            var (tenantValid, tenantResult) = await ValidateTenantAsync(bill, tenantId.Value);
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
             if (!tenantValid)
             {
                 return tenantResult;
@@ -291,15 +279,13 @@ namespace Chabloom.Billing.Backend.Controllers
                 return roleResult;
             }
 
-            // Disable the bill
-            bill.Disabled = true;
-            bill.DisabledUser = userId.Value;
-            bill.UpdatedTimestamp = DateTimeOffset.UtcNow;
+            account.DisabledUser = userId.Value;
+            account.DisabledTimestamp = DateTimeOffset.UtcNow;
 
-            _context.Update(bill);
+            _context.Update(account);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"User {userId} disabled bill {bill.Id}");
+            _logger.LogInformation($"User {userId} disabled account {account.Id}");
 
             return NoContent();
         }
@@ -323,23 +309,15 @@ namespace Chabloom.Billing.Backend.Controllers
             return new Tuple<Guid?, Guid?, IActionResult>(userId, tenantId, Forbid());
         }
 
-        private async Task<Tuple<bool, IActionResult>> ValidateTenantAsync(Bill bill, Guid tenantId)
+        private Task<Tuple<bool, IActionResult>> ValidateTenantAsync(Account account, Guid tenantId)
         {
-            // Find the specified account
-            var account = await _context.Accounts
-                .FindAsync(bill.AccountId);
-            if (account == null)
-            {
-                return new Tuple<bool, IActionResult>(false, NotFound());
-            }
-
             // Ensure the user is calling this endpoint from the correct tenant
             if (account.TenantId != tenantId)
             {
-                return new Tuple<bool, IActionResult>(false, Forbid());
+                return Task.FromResult(new Tuple<bool, IActionResult>(false, Forbid()));
             }
 
-            return new Tuple<bool, IActionResult>(true, Ok());
+            return Task.FromResult(new Tuple<bool, IActionResult>(true, Ok()));
         }
 
         private async Task<Tuple<bool, IActionResult>> ValidateRoleAccessAsync(Guid userId, Guid tenantId)

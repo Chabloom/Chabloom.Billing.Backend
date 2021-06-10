@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Chabloom.Billing.Backend.Models.Users;
 
 namespace Chabloom.Billing.Backend.Models.Tenants
 {

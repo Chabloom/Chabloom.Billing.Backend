@@ -1,16 +1,16 @@
 ﻿// Copyright 2020-2021 Chabloom LC. All rights reserved.
 
 using System;
-using Chabloom.Billing.Backend.Models;
-using Chabloom.Billing.Backend.Models.Auth;
-using Chabloom.Billing.Backend.Models.MultiTenant;
+using Chabloom.Billing.Backend.Models.Accounts;
+using Chabloom.Billing.Backend.Models.Bills;
+using Chabloom.Billing.Backend.Models.Tenants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Chabloom.Billing.Backend.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<User, Role, Guid>
+    public class ApplicationDbContext : IdentityDbContext<TenantUser, TenantRole, Guid>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -19,15 +19,15 @@ namespace Chabloom.Billing.Backend.Data
 
         public DbSet<Tenant> Tenants { get; set; }
 
-        public DbSet<TenantAddress> TenantAddresses { get; set; }
+        public DbSet<TenantHost> TenantHosts { get; set; }
 
         public DbSet<Account> Accounts { get; set; }
+
+        public DbSet<UserAccount> UserAccounts { get; set; }
 
         public DbSet<Bill> Bills { get; set; }
 
         public DbSet<BillSchedule> BillSchedules { get; set; }
-
-        public DbSet<UserAccount> UserAccounts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,26 +35,26 @@ namespace Chabloom.Billing.Backend.Data
 
             #region Auth tables
 
-            modelBuilder.Entity<User>()
-                .ToTable("Users");
-            modelBuilder.Entity<Role>()
-                .ToTable("Roles");
+            modelBuilder.Entity<TenantUser>()
+                .ToTable("TenantUsers");
+            modelBuilder.Entity<TenantRole>()
+                .ToTable("TenantRoles");
             modelBuilder.Entity<IdentityUserClaim<Guid>>()
-                .ToTable("UserClaims");
+                .ToTable("TenantUserClaims");
             modelBuilder.Entity<IdentityUserLogin<Guid>>()
-                .ToTable("UserLogins");
+                .ToTable("TenantUserLogins");
             modelBuilder.Entity<IdentityUserRole<Guid>>()
-                .ToTable("UserRoles");
+                .ToTable("TenantUserRoles");
             modelBuilder.Entity<IdentityUserToken<Guid>>()
-                .ToTable("UserTokens");
+                .ToTable("TenantUserTokens");
             modelBuilder.Entity<IdentityRoleClaim<Guid>>()
-                .ToTable("RoleClaims");
+                .ToTable("TenantRoleClaims");
 
             // Use complex key based on name and tenant id
-            modelBuilder.Entity<User>()
+            modelBuilder.Entity<TenantUser>()
                 .HasAlternateKey(x => new {x.UserName, x.TenantId});
             // Use complex key based on name and tenant id
-            modelBuilder.Entity<Role>()
+            modelBuilder.Entity<TenantRole>()
                 .HasAlternateKey(x => new {x.Name, x.TenantId});
 
             #endregion
@@ -65,17 +65,18 @@ namespace Chabloom.Billing.Backend.Data
                 .HasData(Demo1Data.Tenant);
             modelBuilder.Entity<Tenant>()
                 .HasData(Demo2Data.Tenant);
-            modelBuilder.Entity<Role>()
+            modelBuilder.Entity<TenantRole>()
                 .HasData(Demo1Data.TenantRoles);
-            modelBuilder.Entity<Role>()
+            modelBuilder.Entity<TenantRole>()
                 .HasData(Demo2Data.TenantRoles);
 
             #endregion
 
             #region Application tables
 
+            // Set up alternate unique key for lookup id
             modelBuilder.Entity<Account>()
-                .HasAlternateKey(x => new {x.TenantId, x.ReferenceId});
+                .HasAlternateKey(x => new {x.TenantId, x.TenantLookupId});
 
             // Set up key for join table
             modelBuilder.Entity<UserAccount>()

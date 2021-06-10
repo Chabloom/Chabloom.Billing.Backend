@@ -5,15 +5,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
-using Chabloom.Billing.Backend.Models;
+using Chabloom.Billing.Backend.Models.Bills;
 using Chabloom.Billing.Backend.Services;
-using Chabloom.Billing.Backend.ViewModels;
+using Chabloom.Billing.Backend.ViewModels.Bills;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Chabloom.Billing.Backend.Controllers
+namespace Chabloom.Billing.Backend.Controllers.Bills
 {
     [Authorize]
     [ApiController]
@@ -51,8 +51,6 @@ namespace Chabloom.Billing.Backend.Controllers
                 .Include(x => x.Account)
                 .Where(x => x.AccountId == accountId)
                 .Where(x => x.Account.TenantId == tenantId)
-                // Don't include deleted items
-                .Where(x => !x.Disabled)
                 .ToListAsync();
             if (billSchedules == null)
             {
@@ -66,11 +64,9 @@ namespace Chabloom.Billing.Backend.Controllers
                     Name = x.Name,
                     Amount = x.Amount,
                     CurrencyId = x.CurrencyId,
+                    PaymentScheduleId = x.PaymentScheduleId,
                     Day = x.Day,
                     MonthInterval = x.MonthInterval,
-                    BeginDate = x.BeginDate,
-                    EndDate = x.EndDate,
-                    TransactionScheduleId = x.TransactionScheduleId,
                     AccountId = x.AccountId
                 })
                 .Distinct()
@@ -113,11 +109,9 @@ namespace Chabloom.Billing.Backend.Controllers
                 Name = billSchedule.Name,
                 Amount = billSchedule.Amount,
                 CurrencyId = billSchedule.CurrencyId,
+                PaymentScheduleId = billSchedule.PaymentScheduleId,
                 Day = billSchedule.Day,
                 MonthInterval = billSchedule.MonthInterval,
-                BeginDate = billSchedule.BeginDate,
-                EndDate = billSchedule.EndDate,
-                TransactionScheduleId = billSchedule.TransactionScheduleId,
                 AccountId = billSchedule.AccountId
             };
 
@@ -171,10 +165,6 @@ namespace Chabloom.Billing.Backend.Controllers
             billSchedule.CurrencyId = viewModel.CurrencyId;
             billSchedule.Day = viewModel.Day;
             billSchedule.MonthInterval = viewModel.MonthInterval;
-            billSchedule.BeginDate = viewModel.BeginDate;
-            billSchedule.EndDate = viewModel.EndDate;
-            billSchedule.UpdatedUser = userId.Value;
-            billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
 
             _context.Update(billSchedule);
             await _context.SaveChangesAsync();
@@ -187,11 +177,9 @@ namespace Chabloom.Billing.Backend.Controllers
                 Name = billSchedule.Name,
                 Amount = billSchedule.Amount,
                 CurrencyId = billSchedule.CurrencyId,
+                PaymentScheduleId = billSchedule.PaymentScheduleId,
                 Day = billSchedule.Day,
                 MonthInterval = billSchedule.MonthInterval,
-                BeginDate = billSchedule.BeginDate,
-                EndDate = billSchedule.EndDate,
-                TransactionScheduleId = billSchedule.TransactionScheduleId,
                 AccountId = billSchedule.AccountId
             };
 
@@ -222,12 +210,10 @@ namespace Chabloom.Billing.Backend.Controllers
                 Name = viewModel.Name,
                 Amount = viewModel.Amount,
                 CurrencyId = viewModel.CurrencyId,
+                PaymentScheduleId = viewModel.PaymentScheduleId,
                 Day = viewModel.Day,
                 MonthInterval = viewModel.MonthInterval,
-                BeginDate = viewModel.BeginDate,
-                EndDate = viewModel.EndDate,
-                AccountId = viewModel.AccountId,
-                CreatedUser = userId.Value
+                AccountId = viewModel.AccountId
             };
 
             // Validate that the endpoint is called from the correct tenant
@@ -255,11 +241,9 @@ namespace Chabloom.Billing.Backend.Controllers
                 Name = billSchedule.Name,
                 Amount = billSchedule.Amount,
                 CurrencyId = billSchedule.CurrencyId,
+                PaymentScheduleId = billSchedule.PaymentScheduleId,
                 Day = billSchedule.Day,
                 MonthInterval = billSchedule.MonthInterval,
-                BeginDate = billSchedule.BeginDate,
-                EndDate = billSchedule.EndDate,
-                TransactionScheduleId = billSchedule.TransactionScheduleId,
                 AccountId = billSchedule.AccountId
             };
 
@@ -303,15 +287,10 @@ namespace Chabloom.Billing.Backend.Controllers
                 return roleResult;
             }
 
-            // Disable the bill schedule
-            billSchedule.Disabled = true;
-            billSchedule.DisabledUser = userId.Value;
-            billSchedule.UpdatedTimestamp = DateTimeOffset.UtcNow;
-
-            _context.Update(billSchedule);
+            _context.Remove(billSchedule);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"User {userId} disabled bill schedule {billSchedule.Id}");
+            _logger.LogInformation($"User {userId} deleted bill schedule {billSchedule.Id}");
 
             return NoContent();
         }

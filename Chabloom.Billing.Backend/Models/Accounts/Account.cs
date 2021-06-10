@@ -3,10 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Chabloom.Billing.Backend.Models.Auth;
-using Chabloom.Billing.Backend.Models.MultiTenant;
+using Chabloom.Billing.Backend.Models.Bills;
+using Chabloom.Billing.Backend.Models.Tenants;
 
-namespace Chabloom.Billing.Backend.Models
+namespace Chabloom.Billing.Backend.Models.Accounts
 {
     public class Account
     {
@@ -15,13 +15,13 @@ namespace Chabloom.Billing.Backend.Models
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
+        public string TenantLookupId { get; set; }
+
+        [Required]
         public string Name { get; set; }
 
         [Required]
         public string Address { get; set; }
-
-        [Required]
-        public string ReferenceId { get; set; }
 
         [Required]
         public Guid TenantId { get; set; }
@@ -42,19 +42,16 @@ namespace Chabloom.Billing.Backend.Models
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public Guid UpdatedUser { get; set; } = Guid.Empty;
+        public Guid? UpdatedUser { get; set; }
 
         [Required]
-        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.MinValue;
+        public DateTimeOffset? UpdatedTimestamp { get; set; }
 
         [Required]
-        public bool Disabled { get; set; } = false;
+        public Guid? DisabledUser { get; set; }
 
         [Required]
-        public Guid DisabledUser { get; set; } = Guid.Empty;
-
-        [Required]
-        public DateTimeOffset DisabledTimestamp { get; set; } = DateTimeOffset.MinValue;
+        public DateTimeOffset? DisabledTimestamp { get; set; }
 
         #endregion
     }

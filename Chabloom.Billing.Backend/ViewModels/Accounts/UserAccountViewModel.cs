@@ -3,7 +3,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Billing.Backend.ViewModels
+namespace Chabloom.Billing.Backend.ViewModels.Accounts
 {
     public class UserAccountViewModel
     {

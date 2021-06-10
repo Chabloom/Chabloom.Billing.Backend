@@ -3,20 +3,20 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Billing.Backend.ViewModels
+namespace Chabloom.Billing.Backend.ViewModels.Accounts
 {
     public class AccountViewModel
     {
         public Guid Id { get; set; }
 
         [Required]
+        public string TenantLookupId { get; set; }
+
+        [Required]
         public string Name { get; set; }
 
         [Required]
         public string Address { get; set; }
-
-        [Required]
-        public string ReferenceId { get; set; }
 
         [Required]
         public Guid TenantId { get; set; }

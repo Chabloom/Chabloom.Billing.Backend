@@ -3,8 +3,9 @@
 using System;
 using System.Collections.Generic;
 using Chabloom.Billing.Backend.Models;
-using Chabloom.Billing.Backend.Models.Auth;
-using Chabloom.Billing.Backend.Models.MultiTenant;
+using Chabloom.Billing.Backend.Models.Accounts;
+using Chabloom.Billing.Backend.Models.Bills;
+using Chabloom.Billing.Backend.Models.Tenants;
 
 // ReSharper disable StringLiteralTypo
 
@@ -18,16 +19,16 @@ namespace Chabloom.Billing.Backend.Data
             Name = "North Augusta"
         };
 
-        public static List<Role> TenantRoles { get; } = new()
+        public static List<TenantRole> TenantRoles { get; } = new()
         {
-            new Role
+            new TenantRole
             {
                 Id = Guid.Parse("99A3B0A6-0ADB-4FEE-B2CC-380EE21EA446"),
                 Name = "Admin",
                 ConcurrencyStamp = "c4558764-0f55-4538-ae3a-ad6c8f8124dc",
                 TenantId = Tenant.Id
             },
-            new Role
+            new TenantRole
             {
                 Id = Guid.Parse("F94C10F9-69DD-459F-A2FE-3BE09C2C4075"),
                 Name = "Manager",
@@ -43,7 +44,7 @@ namespace Chabloom.Billing.Backend.Data
                 Id = Guid.Parse("0C994055-DFE2-4863-A087-2B47CD2A1E25"),
                 Name = "400 W Martintown Rd",
                 Address = "400 W Martintown Rd",
-                ReferenceId = "12345",
+                TenantLookupId = "12345",
                 TenantId = Tenant.Id,
                 CreatedUser = Guid.Empty,
                 CreatedTimestamp = DateTimeOffset.MinValue
@@ -53,7 +54,7 @@ namespace Chabloom.Billing.Backend.Data
                 Id = Guid.Parse("C68DDF06-20F6-41F0-869A-6F39CD8D9431"),
                 Name = "402 W Martintown Rd",
                 Address = "402 W Martintown Rd",
-                ReferenceId = "12346",
+                TenantLookupId = "12346",
                 TenantId = Tenant.Id,
                 CreatedUser = Guid.Empty,
                 CreatedTimestamp = DateTimeOffset.MinValue
@@ -63,7 +64,7 @@ namespace Chabloom.Billing.Backend.Data
                 Id = Guid.Parse("5A79115E-2E5A-4FCA-9EA1-E6A21E7DE4D4"),
                 Name = "403 W Martintown Rd",
                 Address = "403 W Martintown Rd",
-                ReferenceId = "12347",
+                TenantLookupId = "12347",
                 TenantId = Tenant.Id,
                 CreatedUser = Guid.Empty,
                 CreatedTimestamp = DateTimeOffset.MinValue
@@ -73,7 +74,7 @@ namespace Chabloom.Billing.Backend.Data
                 Id = Guid.Parse("1BA99ECC-48D3-4839-B748-7565E2A72F77"),
                 Name = "404 W Martintown Rd",
                 Address = "404 W Martintown Rd",
-                ReferenceId = "12348",
+                TenantLookupId = "12348",
                 TenantId = Tenant.Id,
                 CreatedUser = Guid.Empty,
                 CreatedTimestamp = DateTimeOffset.MinValue
@@ -138,9 +139,7 @@ namespace Chabloom.Billing.Backend.Data
                 CurrencyId = "USD",
                 AccountId = Accounts[0].Id,
                 Day = 1,
-                MonthInterval = 1,
-                CreatedUser = Guid.Empty,
-                CreatedTimestamp = DateTimeOffset.MinValue
+                MonthInterval = 1
             },
             new BillSchedule
             {
@@ -150,9 +149,7 @@ namespace Chabloom.Billing.Backend.Data
                 CurrencyId = "USD",
                 AccountId = Accounts[1].Id,
                 Day = 1,
-                MonthInterval = 1,
-                CreatedUser = Guid.Empty,
-                CreatedTimestamp = DateTimeOffset.MinValue
+                MonthInterval = 1
             },
             new BillSchedule
             {
@@ -162,9 +159,7 @@ namespace Chabloom.Billing.Backend.Data
                 CurrencyId = "USD",
                 AccountId = Accounts[2].Id,
                 Day = 1,
-                MonthInterval = 1,
-                CreatedUser = Guid.Empty,
-                CreatedTimestamp = DateTimeOffset.MinValue
+                MonthInterval = 1
             },
             new BillSchedule
             {
@@ -174,9 +169,7 @@ namespace Chabloom.Billing.Backend.Data
                 CurrencyId = "USD",
                 AccountId = Accounts[3].Id,
                 Day = 1,
-                MonthInterval = 1,
-                CreatedUser = Guid.Empty,
-                CreatedTimestamp = DateTimeOffset.MinValue
+                MonthInterval = 1
             }
         };
     }

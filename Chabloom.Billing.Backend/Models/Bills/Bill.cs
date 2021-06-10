@@ -3,8 +3,9 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Chabloom.Billing.Backend.Models.Accounts;
 
-namespace Chabloom.Billing.Backend.Models
+namespace Chabloom.Billing.Backend.Models.Bills
 {
     public class Bill
     {
@@ -21,11 +22,13 @@ namespace Chabloom.Billing.Backend.Models
         [Required]
         public string CurrencyId { get; set; }
 
+        public string PaymentId { get; set; }
+
+        public string PaymentScheduleId { get; set; }
+
         [Required]
         [Column(TypeName = "date")]
         public DateTime DueDate { get; set; }
-
-        public string TransactionId { get; set; }
 
         [Required]
         public Guid AccountId { get; set; }
@@ -42,19 +45,16 @@ namespace Chabloom.Billing.Backend.Models
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
         [Required]
-        public Guid UpdatedUser { get; set; } = Guid.Empty;
+        public Guid? UpdatedUser { get; set; }
 
         [Required]
-        public DateTimeOffset UpdatedTimestamp { get; set; } = DateTimeOffset.MinValue;
+        public DateTimeOffset? UpdatedTimestamp { get; set; }
 
         [Required]
-        public bool Disabled { get; set; } = false;
+        public Guid? DisabledUser { get; set; }
 
         [Required]
-        public Guid DisabledUser { get; set; } = Guid.Empty;
-
-        [Required]
-        public DateTimeOffset DisabledTimestamp { get; set; } = DateTimeOffset.MinValue;
+        public DateTimeOffset? DisabledTimestamp { get; set; }
 
         #endregion
     }
