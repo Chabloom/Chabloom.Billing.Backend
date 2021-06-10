@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using Chabloom.Billing.Backend.Data;
-using Chabloom.Billing.Backend.Models.Auth;
+using Chabloom.Billing.Backend.Models.Tenants;
 using Chabloom.Billing.Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -43,7 +43,7 @@ namespace Chabloom.Billing.Backend
                 options.KnownProxies.Clear();
             });
 
-            services.AddIdentity<User, Role>()
+            services.AddIdentity<TenantUser, TenantRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
@@ -62,7 +62,7 @@ namespace Chabloom.Billing.Backend
                 .AddOperationalStore(options => options.ConfigureDbContext = x =>
                     x.UseNpgsql(Configuration.GetConnectionString("OperationConnection"),
                         y => y.MigrationsAssembly(audience)))
-                .AddAspNetIdentity<User>();
+                .AddAspNetIdentity<TenantUser>();
 
             const string signingKeyPath = "signing/cert.pfx";
             if (File.Exists(signingKeyPath))
