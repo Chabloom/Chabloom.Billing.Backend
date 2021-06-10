@@ -51,9 +51,9 @@ namespace Chabloom.Billing.Backend.Services
                 return null;
             }
 
-            // Find the tenant address for the referer address
-            var tenantAddress = await _context.TenantAddresses
-                .FirstOrDefaultAsync(x => x.Address.ToUpper() == address.ToUpper());
+            // Find the tenant host for the referer address
+            var tenantAddress = await _context.TenantHosts
+                .FirstOrDefaultAsync(x => x.Hostname.ToUpper() == address.ToUpper());
             if (tenantAddress != null)
             {
                 return tenantAddress.TenantId;
