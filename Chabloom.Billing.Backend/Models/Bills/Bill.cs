@@ -44,16 +44,12 @@ namespace Chabloom.Billing.Backend.Models.Bills
         [Required]
         public DateTimeOffset CreatedTimestamp { get; set; } = DateTimeOffset.UtcNow;
 
-        [Required]
         public Guid? UpdatedUser { get; set; }
 
-        [Required]
         public DateTimeOffset? UpdatedTimestamp { get; set; }
 
-        [Required]
         public Guid? DisabledUser { get; set; }
 
-        [Required]
         public DateTimeOffset? DisabledTimestamp { get; set; }
 
         #endregion
