@@ -4,7 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
-using Chabloom.Billing.Backend.Models.Auth;
+using Chabloom.Billing.Backend.Models.Tenants;
 using Chabloom.Billing.Backend.Services;
 using Chabloom.Billing.Backend.ViewModels.Auth;
 using IdentityServer4.Services;
@@ -23,24 +23,24 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
     [Produces("application/json")]
     public class AuthController : ControllerBase
     {
-        private readonly IUserClaimsPrincipalFactory<User> _claimsPrincipalFactory;
+        private readonly IUserClaimsPrincipalFactory<TenantUser> _claimsPrincipalFactory;
         private readonly ApplicationDbContext _context;
         private readonly EmailSender _emailSender;
         private readonly IIdentityServerInteractionService _interactionService;
         private readonly ILogger<AuthController> _logger;
-        private readonly SignInManager<User> _signInManager;
+        private readonly SignInManager<TenantUser> _signInManager;
         private readonly SmsSender _smsSender;
-        private readonly UserManager<User> _userManager;
+        private readonly UserManager<TenantUser> _userManager;
 
         public AuthController(
-            IUserClaimsPrincipalFactory<User> claimsPrincipalFactory,
+            IUserClaimsPrincipalFactory<TenantUser> claimsPrincipalFactory,
             ApplicationDbContext context,
             EmailSender emailSender,
             IIdentityServerInteractionService interactionService,
             ILogger<AuthController> logger,
-            SignInManager<User> signInManager,
+            SignInManager<TenantUser> signInManager,
             SmsSender smsSender,
-            UserManager<User> userManager)
+            UserManager<TenantUser> userManager)
         {
             _claimsPrincipalFactory = claimsPrincipalFactory;
             _context = context;
@@ -136,7 +136,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
             }
 
             // Initialize the user specified in the register request
-            var user = new User
+            var user = new TenantUser
             {
                 UserName = viewModel.Username,
                 Email = viewModel.Email,
