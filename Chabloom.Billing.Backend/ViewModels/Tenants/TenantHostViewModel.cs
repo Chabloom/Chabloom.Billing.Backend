@@ -3,12 +3,12 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Chabloom.Billing.Backend.ViewModels.MultiTenant
+namespace Chabloom.Billing.Backend.ViewModels.Tenants
 {
-    public class TenantAddressViewModel
+    public class TenantHostViewModel
     {
         [Required]
-        public string Address { get; set; }
+        public string Hostname { get; set; }
 
         [Required]
         public Guid TenantId { get; set; }

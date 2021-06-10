@@ -4,11 +4,11 @@ using System;
 using System.Threading.Tasks;
 using Chabloom.Billing.Backend.Data;
 using Chabloom.Billing.Backend.Services;
-using Chabloom.Billing.Backend.ViewModels.MultiTenant;
+using Chabloom.Billing.Backend.ViewModels.Tenants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Chabloom.Billing.Backend.Controllers.MultiTenant
+namespace Chabloom.Billing.Backend.Controllers.Tenants
 {
     [Authorize]
     [ApiController]

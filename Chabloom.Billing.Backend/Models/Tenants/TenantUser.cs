@@ -2,12 +2,11 @@
 
 using System;
 using System.ComponentModel.DataAnnotations;
-using Chabloom.Billing.Backend.Models.MultiTenant;
 using Microsoft.AspNetCore.Identity;
 
-namespace Chabloom.Billing.Backend.Models.Auth
+namespace Chabloom.Billing.Backend.Models.Tenants
 {
-    public class Role : IdentityRole<Guid>
+    public class TenantUser : IdentityUser<Guid>
     {
         [Required]
         public Guid TenantId { get; set; }
