@@ -69,6 +69,18 @@ namespace Chabloom.Billing.Backend.Data
                 .HasData(Demo1Data.TenantRoles);
             modelBuilder.Entity<TenantRole>()
                 .HasData(Demo2Data.TenantRoles);
+            modelBuilder.Entity<TenantUser>()
+                .HasData(Demo1Data.TenantUsers);
+            modelBuilder.Entity<TenantUser>()
+                .HasData(Demo2Data.TenantUsers);
+            modelBuilder.Entity<IdentityUserClaim<Guid>>()
+                .HasData(Demo1Data.TenantUserClaims);
+            modelBuilder.Entity<IdentityUserClaim<Guid>>()
+                .HasData(Demo2Data.TenantUserClaims);
+            modelBuilder.Entity<IdentityUserRole<Guid>>()
+                .HasData(Demo1Data.TenantUserRoles);
+            modelBuilder.Entity<IdentityUserRole<Guid>>()
+                .HasData(Demo2Data.TenantUserRoles);
 
             #endregion
 

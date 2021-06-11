@@ -342,18 +342,27 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                 });
 
             migrationBuilder.InsertData(
+                table: "TenantUsers",
+                columns: new[] { "Id", "AccessFailedCount", "ConcurrencyStamp", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TenantId", "TwoFactorEnabled", "UserName" },
+                values: new object[,]
+                {
+                    { new Guid("39332843-d6dd-425f-8c5d-3ec565857059"), 0, "893D41CD-4642-4542-B81C-E8368FA03906", "mdcasey@chabloom.com", true, false, null, "MDCASEY@CHABLOOM.COM", "MDCASEY@CHABLOOM.COM", "AQAAAAEAACcQAAAAELYyWQtU3cVbIfdmk4LHrtYsKTiYVW7OAge27lolZ3I8D97OE4QQ6Yn4XwGhO8YPuQ==", "+18036179564", true, "C3KZM3I2WQCCAD7EVHRZQSGRFRX5MY3I", new Guid("a2cee23f-3250-4b1b-93dc-87443b02dd89"), false, "mdcasey@chabloom.com" },
+                    { new Guid("dfb1359f-a11d-4de1-b8ac-ada45aef0b72"), 0, "CB0FCA5D-D2F3-4D0B-8277-2091FED613B3", "mdcasey@chabloom.com", true, false, null, "MDCASEY@CHABLOOM.COM", "MDCASEY@CHABLOOM.COM", "AQAAAAEAACcQAAAAELYyWQtU3cVbIfdmk4LHrtYsKTiYVW7OAge27lolZ3I8D97OE4QQ6Yn4XwGhO8YPuQ==", "+18036179564", true, "C3KZM3I2WQCCAD7EVHRZQSGRFRX5MY3I", new Guid("7ba3a979-5abf-407f-aee1-75e2d5522711"), false, "mdcasey@chabloom.com" }
+                });
+
+            migrationBuilder.InsertData(
                 table: "BillSchedules",
                 columns: new[] { "Id", "AccountId", "Amount", "CurrencyId", "Day", "MonthInterval", "Name", "PaymentScheduleId" },
                 values: new object[,]
                 {
+                    { new Guid("cf28d12e-e51a-491c-ada8-cd6fcf840e88"), new Guid("e89ee340-96d2-49b2-a7c9-f444fb95c148"), 3350m, "USD", 1, 1, "Monthly Water", null },
                     { new Guid("be05ae00-081d-48d4-b047-e93fb7523934"), new Guid("0c994055-dfe2-4863-a087-2b47cd2a1e25"), 3350m, "USD", 1, 1, "Monthly Water", null },
+                    { new Guid("bfb53864-8389-4038-9b49-60bbb1358158"), new Guid("8a276669-64f9-4057-a741-10b6b5ff92b0"), 3350m, "USD", 1, 1, "Monthly Water", null },
                     { new Guid("298aa43a-6376-4049-ae6e-6c0d1741fcc4"), new Guid("c68ddf06-20f6-41f0-869a-6f39cd8d9431"), 3350m, "USD", 1, 1, "Monthly Water", null },
                     { new Guid("d28f8ec7-e716-4d5a-b0c4-832d9a1134d5"), new Guid("5a79115e-2e5a-4fca-9ea1-e6a21e7de4d4"), 3350m, "USD", 1, 1, "Monthly Water", null },
-                    { new Guid("38fbb0fe-b1b3-42a9-b591-88c37381e5bc"), new Guid("1ba99ecc-48d3-4839-b748-7565e2a72f77"), 3350m, "USD", 1, 1, "Monthly Water", null },
-                    { new Guid("600d7c6f-6b6a-4a0c-a62e-c5ed482ebc09"), new Guid("31a59e75-197f-433c-b6b4-6160c6cace42"), 3350m, "USD", 1, 1, "Monthly Water", null },
                     { new Guid("35a5cc23-e120-48fe-afda-d42c26233193"), new Guid("d1eaffb6-5757-4fca-b15f-04ec11073275"), 3350m, "USD", 1, 1, "Monthly Water", null },
-                    { new Guid("bfb53864-8389-4038-9b49-60bbb1358158"), new Guid("8a276669-64f9-4057-a741-10b6b5ff92b0"), 3350m, "USD", 1, 1, "Monthly Water", null },
-                    { new Guid("cf28d12e-e51a-491c-ada8-cd6fcf840e88"), new Guid("e89ee340-96d2-49b2-a7c9-f444fb95c148"), 3350m, "USD", 1, 1, "Monthly Water", null }
+                    { new Guid("38fbb0fe-b1b3-42a9-b591-88c37381e5bc"), new Guid("1ba99ecc-48d3-4839-b748-7565e2a72f77"), 3350m, "USD", 1, 1, "Monthly Water", null },
+                    { new Guid("600d7c6f-6b6a-4a0c-a62e-c5ed482ebc09"), new Guid("31a59e75-197f-433c-b6b4-6160c6cace42"), 3350m, "USD", 1, 1, "Monthly Water", null }
                 });
 
             migrationBuilder.InsertData(
@@ -361,14 +370,32 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                 columns: new[] { "Id", "AccountId", "Amount", "CreatedTimestamp", "CreatedUser", "CurrencyId", "DisabledTimestamp", "DisabledUser", "DueDate", "Name", "PaymentId", "PaymentScheduleId", "UpdatedTimestamp", "UpdatedUser" },
                 values: new object[,]
                 {
-                    { new Guid("7690274e-c4ad-4964-9cc5-3625ccaabcca"), new Guid("0c994055-dfe2-4863-a087-2b47cd2a1e25"), 4329m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
-                    { new Guid("8be7e620-7f46-4460-a49a-de09b8895640"), new Guid("c68ddf06-20f6-41f0-869a-6f39cd8d9431"), 5521m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
-                    { new Guid("8240327d-547a-4875-92c8-b1dcfa5f13a9"), new Guid("5a79115e-2e5a-4fca-9ea1-e6a21e7de4d4"), 6123m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
-                    { new Guid("6eec413f-f55e-4dac-8a6d-2f38e5a04fe7"), new Guid("1ba99ecc-48d3-4839-b748-7565e2a72f77"), 4591m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
-                    { new Guid("eb54f672-a3aa-458c-8b4d-18cacae438d6"), new Guid("31a59e75-197f-433c-b6b4-6160c6cace42"), 3371m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
-                    { new Guid("b0eb88dc-c8ea-45c2-80a7-8abf5978cee5"), new Guid("d1eaffb6-5757-4fca-b15f-04ec11073275"), 4252m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
                     { new Guid("61ce9459-55aa-452e-bd29-5e31913e42ff"), new Guid("8a276669-64f9-4057-a741-10b6b5ff92b0"), 7622m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
-                    { new Guid("27bc4cdc-e4f8-43df-a23d-4136d371254b"), new Guid("e89ee340-96d2-49b2-a7c9-f444fb95c148"), 3688m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null }
+                    { new Guid("b0eb88dc-c8ea-45c2-80a7-8abf5978cee5"), new Guid("d1eaffb6-5757-4fca-b15f-04ec11073275"), 4252m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
+                    { new Guid("7690274e-c4ad-4964-9cc5-3625ccaabcca"), new Guid("0c994055-dfe2-4863-a087-2b47cd2a1e25"), 4329m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
+                    { new Guid("27bc4cdc-e4f8-43df-a23d-4136d371254b"), new Guid("e89ee340-96d2-49b2-a7c9-f444fb95c148"), 3688m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
+                    { new Guid("6eec413f-f55e-4dac-8a6d-2f38e5a04fe7"), new Guid("1ba99ecc-48d3-4839-b748-7565e2a72f77"), 4591m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
+                    { new Guid("8240327d-547a-4875-92c8-b1dcfa5f13a9"), new Guid("5a79115e-2e5a-4fca-9ea1-e6a21e7de4d4"), 6123m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
+                    { new Guid("8be7e620-7f46-4460-a49a-de09b8895640"), new Guid("c68ddf06-20f6-41f0-869a-6f39cd8d9431"), 5521m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null },
+                    { new Guid("eb54f672-a3aa-458c-8b4d-18cacae438d6"), new Guid("31a59e75-197f-433c-b6b4-6160c6cace42"), 3371m, new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), new Guid("00000000-0000-0000-0000-000000000000"), "USD", null, null, new DateTime(2021, 9, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "August 2021", null, null, null, null }
+                });
+
+            migrationBuilder.InsertData(
+                table: "TenantUserClaims",
+                columns: new[] { "Id", "ClaimType", "ClaimValue", "UserId" },
+                values: new object[,]
+                {
+                    { 2, "name", "Matthew Casey", new Guid("dfb1359f-a11d-4de1-b8ac-ada45aef0b72") },
+                    { 1, "name", "Matthew Casey", new Guid("39332843-d6dd-425f-8c5d-3ec565857059") }
+                });
+
+            migrationBuilder.InsertData(
+                table: "TenantUserRoles",
+                columns: new[] { "RoleId", "UserId" },
+                values: new object[,]
+                {
+                    { new Guid("99a3b0a6-0adb-4fee-b2cc-380ee21ea446"), new Guid("39332843-d6dd-425f-8c5d-3ec565857059") },
+                    { new Guid("191e5e91-0e14-460e-a481-2f00c72b8228"), new Guid("dfb1359f-a11d-4de1-b8ac-ada45aef0b72") }
                 });
 
             migrationBuilder.CreateIndex(

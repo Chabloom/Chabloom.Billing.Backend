@@ -10,7 +10,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Chabloom.Billing.Backend.Data.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20210610211743_ApplicationMigration1")]
+    [Migration("20210611142429_ApplicationMigration1")]
     partial class ApplicationMigration1
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -609,6 +609,44 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                     b.HasIndex("TenantId");
 
                     b.ToTable("TenantUsers");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("39332843-d6dd-425f-8c5d-3ec565857059"),
+                            AccessFailedCount = 0,
+                            ConcurrencyStamp = "893D41CD-4642-4542-B81C-E8368FA03906",
+                            Email = "mdcasey@chabloom.com",
+                            EmailConfirmed = true,
+                            LockoutEnabled = false,
+                            NormalizedEmail = "MDCASEY@CHABLOOM.COM",
+                            NormalizedUserName = "MDCASEY@CHABLOOM.COM",
+                            PasswordHash = "AQAAAAEAACcQAAAAELYyWQtU3cVbIfdmk4LHrtYsKTiYVW7OAge27lolZ3I8D97OE4QQ6Yn4XwGhO8YPuQ==",
+                            PhoneNumber = "+18036179564",
+                            PhoneNumberConfirmed = true,
+                            SecurityStamp = "C3KZM3I2WQCCAD7EVHRZQSGRFRX5MY3I",
+                            TenantId = new Guid("a2cee23f-3250-4b1b-93dc-87443b02dd89"),
+                            TwoFactorEnabled = false,
+                            UserName = "mdcasey@chabloom.com"
+                        },
+                        new
+                        {
+                            Id = new Guid("dfb1359f-a11d-4de1-b8ac-ada45aef0b72"),
+                            AccessFailedCount = 0,
+                            ConcurrencyStamp = "CB0FCA5D-D2F3-4D0B-8277-2091FED613B3",
+                            Email = "mdcasey@chabloom.com",
+                            EmailConfirmed = true,
+                            LockoutEnabled = false,
+                            NormalizedEmail = "MDCASEY@CHABLOOM.COM",
+                            NormalizedUserName = "MDCASEY@CHABLOOM.COM",
+                            PasswordHash = "AQAAAAEAACcQAAAAELYyWQtU3cVbIfdmk4LHrtYsKTiYVW7OAge27lolZ3I8D97OE4QQ6Yn4XwGhO8YPuQ==",
+                            PhoneNumber = "+18036179564",
+                            PhoneNumberConfirmed = true,
+                            SecurityStamp = "C3KZM3I2WQCCAD7EVHRZQSGRFRX5MY3I",
+                            TenantId = new Guid("7ba3a979-5abf-407f-aee1-75e2d5522711"),
+                            TwoFactorEnabled = false,
+                            UserName = "mdcasey@chabloom.com"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -655,6 +693,22 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                     b.HasIndex("UserId");
 
                     b.ToTable("TenantUserClaims");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ClaimType = "name",
+                            ClaimValue = "Matthew Casey",
+                            UserId = new Guid("39332843-d6dd-425f-8c5d-3ec565857059")
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ClaimType = "name",
+                            ClaimValue = "Matthew Casey",
+                            UserId = new Guid("dfb1359f-a11d-4de1-b8ac-ada45aef0b72")
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
@@ -691,6 +745,18 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                     b.HasIndex("RoleId");
 
                     b.ToTable("TenantUserRoles");
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = new Guid("39332843-d6dd-425f-8c5d-3ec565857059"),
+                            RoleId = new Guid("99a3b0a6-0adb-4fee-b2cc-380ee21ea446")
+                        },
+                        new
+                        {
+                            UserId = new Guid("dfb1359f-a11d-4de1-b8ac-ada45aef0b72"),
+                            RoleId = new Guid("191e5e91-0e14-460e-a481-2f00c72b8228")
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>

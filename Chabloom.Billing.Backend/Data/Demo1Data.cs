@@ -6,6 +6,8 @@ using Chabloom.Billing.Backend.Models;
 using Chabloom.Billing.Backend.Models.Accounts;
 using Chabloom.Billing.Backend.Models.Bills;
 using Chabloom.Billing.Backend.Models.Tenants;
+using IdentityModel;
+using Microsoft.AspNetCore.Identity;
 
 // ReSharper disable StringLiteralTypo
 
@@ -35,6 +37,46 @@ namespace Chabloom.Billing.Backend.Data
                 ConcurrencyStamp = "127fb553-75cd-4c9a-932f-b5b036d40505",
                 TenantId = Tenant.Id
             }
+        };
+
+        public static List<TenantUser> TenantUsers { get; } = new()
+        {
+            new TenantUser
+            {
+                Id = Guid.Parse("39332843-D6DD-425F-8C5D-3EC565857059"),
+                UserName = "mdcasey@chabloom.com",
+                NormalizedUserName = "MDCASEY@CHABLOOM.COM",
+                Email = "mdcasey@chabloom.com",
+                NormalizedEmail = "MDCASEY@CHABLOOM.COM",
+                EmailConfirmed = true,
+                PhoneNumber = "+18036179564",
+                PhoneNumberConfirmed = true,
+                PasswordHash =
+                    "AQAAAAEAACcQAAAAELYyWQtU3cVbIfdmk4LHrtYsKTiYVW7OAge27lolZ3I8D97OE4QQ6Yn4XwGhO8YPuQ==",
+                SecurityStamp = "C3KZM3I2WQCCAD7EVHRZQSGRFRX5MY3I",
+                ConcurrencyStamp = "893D41CD-4642-4542-B81C-E8368FA03906",
+                TenantId = Tenant.Id
+            }
+        };
+
+        public static List<IdentityUserClaim<Guid>> TenantUserClaims { get; } = new()
+        {
+            new IdentityUserClaim<Guid>
+            {
+                Id = 1,
+                UserId = TenantUsers[0].Id,
+                ClaimType = JwtClaimTypes.Name,
+                ClaimValue = "Matthew Casey"
+            }
+        };
+
+        public static List<IdentityUserRole<Guid>> TenantUserRoles { get; } = new()
+        {
+            new IdentityUserRole<Guid>
+            {
+                UserId = TenantUsers[0].Id,
+                RoleId = TenantRoles[0].Id
+            },
         };
 
         public static List<Account> Accounts { get; } = new()
