@@ -482,11 +482,11 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                         .HasColumnType("text");
 
                     b.Property<string>("Name")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("NormalizedName")
+                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
@@ -495,10 +495,9 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("Name", "TenantId");
+                    b.HasAlternateKey("NormalizedName", "TenantId");
 
                     b.HasIndex("NormalizedName")
-                        .IsUnique()
                         .HasDatabaseName("RoleNameIndex");
 
                     b.HasIndex("TenantId");
@@ -511,6 +510,7 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                             Id = new Guid("99a3b0a6-0adb-4fee-b2cc-380ee21ea446"),
                             ConcurrencyStamp = "c4558764-0f55-4538-ae3a-ad6c8f8124dc",
                             Name = "Admin",
+                            NormalizedName = "ADMIN",
                             TenantId = new Guid("a2cee23f-3250-4b1b-93dc-87443b02dd89")
                         },
                         new
@@ -518,6 +518,7 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                             Id = new Guid("f94c10f9-69dd-459f-a2fe-3be09c2c4075"),
                             ConcurrencyStamp = "127fb553-75cd-4c9a-932f-b5b036d40505",
                             Name = "Manager",
+                            NormalizedName = "MANAGER",
                             TenantId = new Guid("a2cee23f-3250-4b1b-93dc-87443b02dd89")
                         },
                         new
@@ -525,6 +526,7 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                             Id = new Guid("191e5e91-0e14-460e-a481-2f00c72b8228"),
                             ConcurrencyStamp = "e9da379a-ccf0-4209-9460-555d013831b1",
                             Name = "Admin",
+                            NormalizedName = "ADMIN",
                             TenantId = new Guid("7ba3a979-5abf-407f-aee1-75e2d5522711")
                         },
                         new
@@ -532,6 +534,7 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                             Id = new Guid("52c71ae1-9b6b-4694-9ea8-e70501a8aca2"),
                             ConcurrencyStamp = "6bad7203-2f73-4ba7-92b8-98ee8ad95f3f",
                             Name = "Manager",
+                            NormalizedName = "MANAGER",
                             TenantId = new Guid("7ba3a979-5abf-407f-aee1-75e2d5522711")
                         });
                 });
@@ -567,6 +570,7 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("NormalizedUserName")
+                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
@@ -589,19 +593,17 @@ namespace Chabloom.Billing.Backend.Data.Migrations.Application
                         .HasColumnType("boolean");
 
                     b.Property<string>("UserName")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("UserName", "TenantId");
+                    b.HasAlternateKey("NormalizedUserName", "TenantId");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
-                        .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
                     b.HasIndex("TenantId");

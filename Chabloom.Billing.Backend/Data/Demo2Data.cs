@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using Chabloom.Billing.Backend.Models;
 using Chabloom.Billing.Backend.Models.Accounts;
 using Chabloom.Billing.Backend.Models.Bills;
 using Chabloom.Billing.Backend.Models.Tenants;
@@ -27,6 +26,7 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("191E5E91-0E14-460E-A481-2F00C72B8228"),
                 Name = "Admin",
+                NormalizedName = "ADMIN",
                 ConcurrencyStamp = "e9da379a-ccf0-4209-9460-555d013831b1",
                 TenantId = Tenant.Id
             },
@@ -34,6 +34,7 @@ namespace Chabloom.Billing.Backend.Data
             {
                 Id = Guid.Parse("52C71AE1-9B6B-4694-9EA8-E70501A8ACA2"),
                 Name = "Manager",
+                NormalizedName = "MANAGER",
                 ConcurrencyStamp = "6bad7203-2f73-4ba7-92b8-98ee8ad95f3f",
                 TenantId = Tenant.Id
             }

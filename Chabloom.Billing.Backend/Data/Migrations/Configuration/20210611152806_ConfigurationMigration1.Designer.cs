@@ -10,7 +10,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Chabloom.Billing.Backend.Data.Migrations.Configuration
 {
     [DbContext(typeof(ConfigurationDbContext))]
-    [Migration("20210611142434_ConfigurationMigration1")]
+    [Migration("20210611152806_ConfigurationMigration1")]
     partial class ConfigurationMigration1
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -35,10 +35,26 @@ namespace Chabloom.Billing.Backend.Data
 
             #region Auth tables
 
-            modelBuilder.Entity<TenantUser>()
-                .ToTable("TenantUsers");
-            modelBuilder.Entity<TenantRole>()
-                .ToTable("TenantRoles");
+            modelBuilder.Entity<TenantUser>(builder =>
+            {
+                // Make predefined index non-unique
+                builder.HasIndex(x => x.NormalizedUserName)
+                    .HasDatabaseName("UserNameIndex")
+                    .IsUnique(false);
+                // Add tenant-based key
+                builder.HasAlternateKey(x => new {x.NormalizedUserName, x.TenantId});
+                builder.ToTable("TenantUsers");
+            });
+            modelBuilder.Entity<TenantRole>(builder =>
+            {
+                // Make predefined index non-unique
+                builder.HasIndex(x => x.NormalizedName)
+                    .HasDatabaseName("RoleNameIndex")
+                    .IsUnique(false);
+                // Add tenant-based key
+                builder.HasAlternateKey(x => new {x.NormalizedName, x.TenantId});
+                builder.ToTable("TenantRoles");
+            });
             modelBuilder.Entity<IdentityUserClaim<Guid>>()
                 .ToTable("TenantUserClaims");
             modelBuilder.Entity<IdentityUserLogin<Guid>>()
@@ -50,37 +66,35 @@ namespace Chabloom.Billing.Backend.Data
             modelBuilder.Entity<IdentityRoleClaim<Guid>>()
                 .ToTable("TenantRoleClaims");
 
-            // Use complex key based on name and tenant id
-            modelBuilder.Entity<TenantUser>()
-                .HasAlternateKey(x => new {x.UserName, x.TenantId});
-            // Use complex key based on name and tenant id
-            modelBuilder.Entity<TenantRole>()
-                .HasAlternateKey(x => new {x.Name, x.TenantId});
-
             #endregion
 
             #region Auth data
 
-            modelBuilder.Entity<Tenant>()
-                .HasData(Demo1Data.Tenant);
-            modelBuilder.Entity<Tenant>()
-                .HasData(Demo2Data.Tenant);
-            modelBuilder.Entity<TenantRole>()
-                .HasData(Demo1Data.TenantRoles);
-            modelBuilder.Entity<TenantRole>()
-                .HasData(Demo2Data.TenantRoles);
-            modelBuilder.Entity<TenantUser>()
-                .HasData(Demo1Data.TenantUsers);
-            modelBuilder.Entity<TenantUser>()
-                .HasData(Demo2Data.TenantUsers);
-            modelBuilder.Entity<IdentityUserClaim<Guid>>()
-                .HasData(Demo1Data.TenantUserClaims);
-            modelBuilder.Entity<IdentityUserClaim<Guid>>()
-                .HasData(Demo2Data.TenantUserClaims);
-            modelBuilder.Entity<IdentityUserRole<Guid>>()
-                .HasData(Demo1Data.TenantUserRoles);
-            modelBuilder.Entity<IdentityUserRole<Guid>>()
-                .HasData(Demo2Data.TenantUserRoles);
+            modelBuilder.Entity<Tenant>(builder =>
+            {
+                builder.HasData(Demo1Data.Tenant);
+                builder.HasData(Demo2Data.Tenant);
+            });
+            modelBuilder.Entity<TenantRole>(builder =>
+            {
+                builder.HasData(Demo1Data.TenantRoles);
+                builder.HasData(Demo2Data.TenantRoles);
+            });
+            modelBuilder.Entity<TenantUser>(builder =>
+            {
+                builder.HasData(Demo1Data.TenantUsers);
+                builder.HasData(Demo2Data.TenantUsers);
+            });
+            modelBuilder.Entity<IdentityUserClaim<Guid>>(builder =>
+            {
+                builder.HasData(Demo1Data.TenantUserClaims);
+                builder.HasData(Demo2Data.TenantUserClaims);
+            });
+            modelBuilder.Entity<IdentityUserRole<Guid>>(builder =>
+            {
+                builder.HasData(Demo1Data.TenantUserRoles);
+                builder.HasData(Demo2Data.TenantUserRoles);
+            });
 
             #endregion
 
