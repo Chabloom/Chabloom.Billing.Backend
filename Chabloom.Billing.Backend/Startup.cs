@@ -48,7 +48,8 @@ namespace Chabloom.Billing.Backend
                     .AddDataProtection()
                     .ProtectKeysWithAzureKeyVault(
                         new Uri("https://chb-dev-1.vault.azure.net/keys/key-billing/30f8eb9d9d19428aa652b6aed1c5c53a"),
-                        new DefaultAzureCredential());
+                        new DefaultAzureCredential())
+                    .PersistKeysToDbContext<ApplicationDbContext>();
             }
 
             services.AddDbContext<ApplicationDbContext>(options =>

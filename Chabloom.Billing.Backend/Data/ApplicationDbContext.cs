@@ -4,13 +4,14 @@ using System;
 using Chabloom.Billing.Backend.Models.Accounts;
 using Chabloom.Billing.Backend.Models.Bills;
 using Chabloom.Billing.Backend.Models.Tenants;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Chabloom.Billing.Backend.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<TenantUser, TenantRole, Guid>
+    public class ApplicationDbContext : IdentityDbContext<TenantUser, TenantRole, Guid>, IDataProtectionKeyContext
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -28,6 +29,8 @@ namespace Chabloom.Billing.Backend.Data
         public DbSet<Bill> Bills { get; set; }
 
         public DbSet<BillSchedule> BillSchedules { get; set; }
+
+        public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
