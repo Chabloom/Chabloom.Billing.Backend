@@ -45,7 +45,7 @@ namespace Chabloom.Billing.Backend
 
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(
-                    Configuration.GetConnectionString("DefaultConnection")));
+                    Configuration.GetValue<string>("db-billing-application")));
 
             services.Configure<ForwardedHeadersOptions>(options =>
             {
@@ -68,10 +68,10 @@ namespace Chabloom.Billing.Backend
                     options.UserInteraction.LogoutUrl = $"{frontendPublicAddress}/account/signOut";
                 })
                 .AddConfigurationStore(options => options.ConfigureDbContext = x =>
-                    x.UseNpgsql(Configuration.GetConnectionString("ConfigurationConnection"),
+                    x.UseNpgsql(Configuration.GetValue<string>("db-billing-configuration"),
                         y => y.MigrationsAssembly(audience)))
                 .AddOperationalStore(options => options.ConfigureDbContext = x =>
-                    x.UseNpgsql(Configuration.GetConnectionString("OperationConnection"),
+                    x.UseNpgsql(Configuration.GetValue<string>("db-billing-operation"),
                         y => y.MigrationsAssembly(audience)))
                 .AddAspNetIdentity<TenantUser>();
 
