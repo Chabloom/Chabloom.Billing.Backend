@@ -21,6 +21,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 namespace Chabloom.Billing.Backend
 {
@@ -155,6 +156,22 @@ namespace Chabloom.Billing.Backend
                 });
             });
 
+            // Setup generated OpenAPI documentation
+            services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "Chabloom Billing",
+                    Description = "Chabloom Billing v1 API",
+                    Version = "v1"
+                });
+                options.AddSecurityDefinition("openid", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.OpenIdConnect,
+                    OpenIdConnectUrl = new Uri($"{frontendPublicAddress}/.well-known/openid-configuration")
+                });
+            });
+
             services.AddControllers();
         }
 
@@ -177,6 +194,12 @@ namespace Chabloom.Billing.Backend
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.UseSwagger(options => options.RouteTemplate = "/swagger/{documentName}/chabloom-billing-api.json");
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/swagger/v1/chabloom-billing-api.json", "Chabloom Billing v1 API");
+            });
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers().RequireAuthorization("ApiScope"); });
         }
