@@ -2,12 +2,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Security.Cryptography.X509Certificates;
 using Azure.Identity;
+using Azure.Security.KeyVault.Keys;
 using Chabloom.Billing.Backend.Data;
 using Chabloom.Billing.Backend.Models.Tenants;
 using Chabloom.Billing.Backend.Services;
+using IdentityServer4;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
@@ -20,6 +20,7 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Chabloom.Billing.Backend
 {
@@ -45,7 +46,9 @@ namespace Chabloom.Billing.Backend
 
                 services
                     .AddDataProtection()
-                    .ProtectKeysWithAzureKeyVault(new Uri("key-billing"), new DefaultAzureCredential());
+                    .ProtectKeysWithAzureKeyVault(
+                        new Uri("https://chb-dev-1.vault.azure.net/keys/key-billing/30f8eb9d9d19428aa652b6aed1c5c53a"),
+                        new DefaultAzureCredential());
             }
 
             services.AddDbContext<ApplicationDbContext>(options =>
@@ -80,11 +83,20 @@ namespace Chabloom.Billing.Backend
                         y => y.MigrationsAssembly(audience)))
                 .AddAspNetIdentity<TenantUser>();
 
-            const string signingKeyPath = "signing/cert.pfx";
-            if (File.Exists(signingKeyPath))
+            if (!string.IsNullOrEmpty(vaultAddress))
             {
-                var signingKeyCert = new X509Certificate2(File.ReadAllBytes(signingKeyPath));
-                identityServerBuilder.AddSigningCredential(signingKeyCert);
+                var keyClient = new KeyClient(new Uri(vaultAddress), new DefaultAzureCredential());
+                var vaultKey = keyClient.GetKey("key-billing").Value;
+                if (vaultKey.KeyType == KeyType.Rsa)
+                {
+                    var rsa = vaultKey.Key.ToRSA();
+                    var key = new RsaSecurityKey(rsa)
+                    {
+                        KeyId = vaultKey.Properties.Version
+                    };
+
+                    identityServerBuilder.AddSigningCredential(key, IdentityServerConstants.RsaSigningAlgorithm.PS256);
+                }
             }
             else
             {
