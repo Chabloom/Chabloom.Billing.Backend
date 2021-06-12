@@ -1,19 +1,25 @@
 trigger:
-  - master
+- master
+- testing
+- release
 
 pool:
-  vmImage: "ubuntu-latest"
+  vmImage: 'ubuntu-latest'
 
 variables:
-  buildConfiguration: "Release"
+  buildConfiguration: 'Release'
 
 steps:
-  - task: Docker@2
-    inputs:
-      containerRegistry: 'docker-registry-chb-dev-1'
-      repository: 'chabloom-billing-backend'
-      command: 'buildAndPush'
-      Dockerfile: '**/Dockerfile'
-      tags: |
-        $(Build.BuildId)
-        latest
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '-o $(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
