@@ -1,7 +1,5 @@
 trigger:
 - master
-- testing
-- release
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -10,16 +8,9 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
-- task: DotNetCoreCLI@2
+- task: Docker@2
   inputs:
-    command: 'build'
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'publish'
-    publishWebProjects: true
-    arguments: '-o $(Build.ArtifactStagingDirectory)'
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+    containerRegistry: 'Docker Hub'
+    repository: 'mdcasey/chabloom-billing-backend'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile'
