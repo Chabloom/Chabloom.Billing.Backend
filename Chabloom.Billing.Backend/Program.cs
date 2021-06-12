@@ -23,16 +23,14 @@ namespace Chabloom.Billing.Backend
             return Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration(builder =>
                 {
+                    var vaultAddress = Environment.GetEnvironmentVariable("AZURE_VAULT_ADDRESS");
+                    if (string.IsNullOrEmpty(vaultAddress))
                     {
-                        var vaultAddress = Environment.GetEnvironmentVariable("AZURE_VAULT_ADDRESS");
-                        if (string.IsNullOrEmpty(vaultAddress))
-                        {
-                            return;
-                        }
-
-                        var client = new SecretClient(new Uri(vaultAddress), new DefaultAzureCredential());
-                        builder.AddAzureKeyVault(client, new KeyVaultSecretManager());
+                        return;
                     }
+
+                    var client = new SecretClient(new Uri(vaultAddress), new DefaultAzureCredential());
+                    builder.AddAzureKeyVault(client, new KeyVaultSecretManager());
                 })
                 .ConfigureLogging(logging =>
                 {
