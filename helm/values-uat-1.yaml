@@ -89,6 +89,7 @@ tolerations: []
 affinity: {}
 
 aspnetcoreEnvironment: Production
+azureVaultAddress: https://chb-uat-1.vault.azure.net/
 redisConfiguration: "redis-master"
 accountsFrontendAddress: https://accounts-uat-1.chabloom.com
 billingFrontendAddress: https://billing-uat-1.chabloom.com

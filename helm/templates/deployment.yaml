@@ -32,6 +32,8 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: {{ .Values.aspnetcoreEnvironment }}
+            - name: AZURE_VAULT_ADDRESS
+              value: {{ .Values.azureVaultAddress }}
             - name: REDIS_CONFIGURATION
               value: {{ .Values.redisConfiguration }}
             - name: ACCOUNTS_FRONTEND_ADDRESS
