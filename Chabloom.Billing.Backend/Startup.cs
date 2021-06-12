@@ -9,15 +9,14 @@ using Chabloom.Billing.Backend.Models.Tenants;
 using Chabloom.Billing.Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using StackExchange.Redis;
 
 namespace Chabloom.Billing.Backend
 {
@@ -52,9 +51,9 @@ namespace Chabloom.Billing.Backend
             var frontendPublicAddress = Environment.GetEnvironmentVariable("BILLING_FRONTEND_ADDRESS");
             var identityServerBuilder = services.AddIdentityServer(options =>
                 {
-                    options.UserInteraction.ErrorUrl = $"{frontendPublicAddress}/Account/Error";
-                    options.UserInteraction.LoginUrl = $"{frontendPublicAddress}/Account/SignIn";
-                    options.UserInteraction.LogoutUrl = $"{frontendPublicAddress}/Account/SignOut";
+                    options.UserInteraction.ErrorUrl = $"{frontendPublicAddress}/account/error";
+                    options.UserInteraction.LoginUrl = $"{frontendPublicAddress}/account/signIn";
+                    options.UserInteraction.LogoutUrl = $"{frontendPublicAddress}/account/signOut";
                 })
                 .AddConfigurationStore(options => options.ConfigureDbContext = x =>
                     x.UseNpgsql(Configuration.GetConnectionString("ConfigurationConnection"),
@@ -67,25 +66,22 @@ namespace Chabloom.Billing.Backend
             const string signingKeyPath = "signing/cert.pfx";
             if (File.Exists(signingKeyPath))
             {
-                Console.WriteLine("Using signing credential from kubernetes storage");
                 var signingKeyCert = new X509Certificate2(File.ReadAllBytes(signingKeyPath));
                 identityServerBuilder.AddSigningCredential(signingKeyCert);
             }
             else
             {
-                Console.WriteLine("Using developer signing credential");
                 identityServerBuilder.AddDeveloperSigningCredential();
             }
 
-            var redisConfiguration = Environment.GetEnvironmentVariable("REDIS_CONFIGURATION");
-            if (!string.IsNullOrEmpty(redisConfiguration))
-            {
-                services.AddDataProtection()
-                    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisConfiguration),
-                        $"{audience}-DataProtection");
-            }
-
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.SameSite = SameSiteMode.None;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    options.Cookie.IsEssential = true;
+                })
                 .AddJwtBearer(options =>
                 {
                     options.Authority = Environment.GetEnvironmentVariable("BILLING_BACKEND_ADDRESS");
