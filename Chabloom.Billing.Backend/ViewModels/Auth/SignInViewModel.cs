@@ -15,8 +15,5 @@ namespace Chabloom.Billing.Backend.ViewModels.Auth
 
         [Required]
         public bool Persist { get; set; }
-
-        [Required]
-        public Guid TenantId { get; set; }
     }
 }
