@@ -31,6 +31,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
         private readonly SignInManager<TenantUser> _signInManager;
         private readonly SmsSender _smsSender;
         private readonly UserManager<TenantUser> _userManager;
+        private readonly IValidator _validator;
 
         public AuthController(
             IUserClaimsPrincipalFactory<TenantUser> claimsPrincipalFactory,
@@ -40,7 +41,8 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
             ILogger<AuthController> logger,
             SignInManager<TenantUser> signInManager,
             SmsSender smsSender,
-            UserManager<TenantUser> userManager)
+            UserManager<TenantUser> userManager,
+            IValidator validator)
         {
             _claimsPrincipalFactory = claimsPrincipalFactory;
             _context = context;
@@ -50,6 +52,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
             _signInManager = signInManager;
             _smsSender = smsSender;
             _userManager = userManager;
+            _validator = validator;
         }
 
         [HttpPost("SignIn")]
@@ -64,10 +67,16 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
                 return BadRequest();
             }
 
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
+            {
+                return Forbid();
+            }
+
             // Find the user specified in the login request
             var user = await _context.Users
-                .Where(x => x.TenantId == viewModel.TenantId)
-                .FirstOrDefaultAsync(x => x.NormalizedUserName == viewModel.Username.ToUpper());
+                .FindAsync(viewModel.Username.ToUpper(), tenantId);
             if (user == null)
             {
                 return NotFound();
@@ -127,12 +136,11 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
                 return BadRequest();
             }
 
-            // Ensure the specified tenant exists
-            var tenant = await _context.Tenants
-                .FirstOrDefaultAsync(x => x.Id == viewModel.TenantId);
-            if (tenant == null)
+            // Get the current tenant id
+            var tenantId = await _validator.GetTenantIdAsync(Request);
+            if (!tenantId.HasValue)
             {
-                return BadRequest();
+                return Forbid();
             }
 
             // Initialize the user specified in the register request
@@ -141,7 +149,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
                 UserName = viewModel.Username,
                 Email = viewModel.Email,
                 PhoneNumber = viewModel.PhoneNumber,
-                TenantId = viewModel.TenantId
+                TenantId = tenantId.Value
             };
 
             // Create the user specified in the register request
