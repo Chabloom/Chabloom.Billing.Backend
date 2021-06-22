@@ -19,6 +19,20 @@ namespace Chabloom.Billing.Backend.Data
             Id = Guid.Parse("7BA3A979-5ABF-407F-AEE1-75E2D5522711"),
             Name = "Aiken"
         };
+        
+        public static List<TenantHost> TenantHosts { get; } = new()
+        {
+            new TenantHost
+            {
+                Hostname = "aiken.dev-1.chabloom.com",
+                TenantId = Tenant.Id
+            },
+            new TenantHost
+            {
+                Hostname = "aiken.uat-1.chabloom.com",
+                TenantId = Tenant.Id
+            }
+        };
 
         public static List<TenantRole> TenantRoles { get; } = new()
         {

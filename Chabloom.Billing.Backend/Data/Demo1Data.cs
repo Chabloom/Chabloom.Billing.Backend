@@ -19,6 +19,30 @@ namespace Chabloom.Billing.Backend.Data
             Id = Guid.Parse("A2CEE23F-3250-4B1B-93DC-87443B02DD89"),
             Name = "North Augusta"
         };
+        
+        public static List<TenantHost> TenantHosts { get; } = new()
+        {
+            new TenantHost
+            {
+                Hostname = "billing-dev-1.chabloom.com",
+                TenantId = Tenant.Id
+            },
+            new TenantHost
+            {
+                Hostname = "billing-uat-1.chabloom.com",
+                TenantId = Tenant.Id
+            },
+            new TenantHost
+            {
+                Hostname = "north-augusta.dev-1.chabloom.com",
+                TenantId = Tenant.Id
+            },
+            new TenantHost
+            {
+                Hostname = "north-augusta.uat-1.chabloom.com",
+                TenantId = Tenant.Id
+            }
+        };
 
         public static List<TenantRole> TenantRoles { get; } = new()
         {

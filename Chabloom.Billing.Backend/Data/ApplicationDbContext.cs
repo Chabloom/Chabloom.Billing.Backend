@@ -78,6 +78,11 @@ namespace Chabloom.Billing.Backend.Data
                 builder.HasData(Demo1Data.Tenant);
                 builder.HasData(Demo2Data.Tenant);
             });
+            modelBuilder.Entity<TenantHost>(builder =>
+            {
+                builder.HasData(Demo1Data.TenantHosts);
+                builder.HasData(Demo2Data.TenantHosts);
+            });
             modelBuilder.Entity<TenantRole>(builder =>
             {
                 builder.HasData(Demo1Data.TenantRoles);
