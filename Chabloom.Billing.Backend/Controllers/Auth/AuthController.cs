@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Chabloom.Billing.Backend.Controllers.Auth
@@ -79,6 +78,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
                 .FindAsync(viewModel.Username.ToUpper(), tenantId);
             if (user == null)
             {
+                _logger.LogWarning($"User {viewModel.Username} not found");
                 return NotFound();
             }
 
@@ -87,7 +87,7 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
                 user.AccessFailedCount > 3);
             if (!result.Succeeded)
             {
-                _logger.LogWarning($"User {user.Id} sign in failure");
+                _logger.LogWarning($"User {viewModel.Username} password incorrect");
                 return Unauthorized();
             }
 
