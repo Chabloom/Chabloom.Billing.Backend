@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Chabloom.Billing.Backend.Controllers.Auth
@@ -75,7 +76,8 @@ namespace Chabloom.Billing.Backend.Controllers.Auth
 
             // Find the user specified in the login request
             var user = await _context.Users
-                .FindAsync(viewModel.Username.ToUpper(), tenantId);
+                .Where(x => x.TenantId == tenantId)
+                .FirstOrDefaultAsync(x => x.NormalizedUserName == viewModel.Username.ToUpper());
             if (user == null)
             {
                 _logger.LogWarning($"User {viewModel.Username} not found");
