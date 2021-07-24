@@ -46,22 +46,34 @@ namespace Chabloom.Billing.Backend.Controllers.Accounts
                 return userTenantResult;
             }
 
+            List<Account> accounts;
             // Ensure the user is authorized at the requested level
             var (roleValid, roleResult) = await ValidateRoleAccessAsync(userId.Value, tenantId.Value);
-            if (!roleValid)
+            if (roleValid)
             {
-                return roleResult;
+                // Get all accounts
+                accounts = await _context.Accounts
+                    .Where(x => x.TenantId == tenantId)
+                    // Don't include disabled items
+                    .Where(x => !x.DisabledTimestamp.HasValue)
+                    .ToListAsync();
+                if (accounts == null)
+                {
+                    return Ok(new List<AccountViewModel>());
+                }
             }
-
-            // Get all accounts
-            var accounts = await _context.Accounts
-                .Where(x => x.TenantId == tenantId)
-                // Don't include disabled items
-                .Where(x => !x.DisabledTimestamp.HasValue)
-                .ToListAsync();
-            if (accounts == null)
+            else
             {
-                return Ok(new List<AccountViewModel>());
+                // Get all accounts the user is tracking
+                accounts = await _context.UserAccounts
+                    .Include(x => x.Account)
+                    .Where(x => x.UserId == userId.Value)
+                    .Select(x => x.Account)
+                    .ToListAsync();
+                if (accounts == null)
+                {
+                    return Ok(new List<AccountViewModel>());
+                }
             }
 
             var viewModels = accounts
@@ -78,6 +90,7 @@ namespace Chabloom.Billing.Backend.Controllers.Accounts
             return Ok(viewModels);
         }
 
+        [AllowAnonymous]
         [HttpGet("{id}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
@@ -95,6 +108,48 @@ namespace Chabloom.Billing.Backend.Controllers.Accounts
             // Find the specified account
             var account = await _context.Accounts
                 .FindAsync(id);
+            if (account == null)
+            {
+                return NotFound();
+            }
+
+            // Validate that the endpoint is called from the correct tenant
+            var (tenantValid, tenantResult) = await ValidateTenantAsync(account, tenantId.Value);
+            if (!tenantValid)
+            {
+                return tenantResult;
+            }
+
+            var retViewModel = new AccountViewModel
+            {
+                Id = account.Id,
+                TenantLookupId = account.TenantLookupId,
+                Name = account.Name,
+                Address = account.Address,
+                TenantId = account.TenantId
+            };
+
+            return Ok(retViewModel);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("Lookup/{id}")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> LookupAccount(string id)
+        {
+            // Get the user and tenant id
+            var (_, tenantId, userTenantResult) = await GetUserTenantAsync();
+            if (!tenantId.HasValue)
+            {
+                return userTenantResult;
+            }
+
+            // Find the specified account
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(x => x.TenantLookupId == id);
             if (account == null)
             {
                 return NotFound();
