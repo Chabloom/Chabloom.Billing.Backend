@@ -8,6 +8,7 @@ using Chabloom.Billing.Backend.Data;
 using Chabloom.Billing.Backend.Models.Bills;
 using Chabloom.Billing.Backend.Services;
 using Chabloom.Billing.Backend.ViewModels.Bills;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Chabloom.Billing.Backend.Controllers.Bills
 {
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
