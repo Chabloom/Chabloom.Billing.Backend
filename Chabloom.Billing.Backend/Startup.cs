@@ -106,6 +106,13 @@ namespace Chabloom.Billing.Backend
             }
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.SameSite = SameSiteMode.None;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    options.Cookie.IsEssential = true;
+                })
                 .AddJwtBearer(options =>
                 {
                     options.Authority = Environment.GetEnvironmentVariable("BILLING_BACKEND_ADDRESS");
