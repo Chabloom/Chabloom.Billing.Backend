@@ -65,10 +65,9 @@ namespace Chabloom.Billing.Backend
                 options.KnownProxies.Clear();
             });
 
-            services.AddIdentityCore<TenantUser>()
+            services.AddIdentity<TenantUser, TenantRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders()
-                .AddSignInManager<SignInManager<TenantUser>>();
+                .AddDefaultTokenProviders();
 
             const string audience = "Chabloom.Billing.Backend";
 
@@ -110,17 +109,6 @@ namespace Chabloom.Billing.Backend
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
-                    options.LoginPath = PathString.Empty;
-                    options.Events.OnRedirectToLogin = context =>
-                    {
-                        context.Response.StatusCode = 401;
-                        return Task.CompletedTask;
-                    };
-                    options.Events.OnRedirectToAccessDenied = context =>
-                    {
-                        context.Response.StatusCode = 401;
-                        return Task.CompletedTask;
-                    };
                     options.Cookie.HttpOnly = true;
                     options.Cookie.SameSite = SameSiteMode.None;
                     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
