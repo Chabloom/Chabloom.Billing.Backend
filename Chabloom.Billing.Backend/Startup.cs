@@ -85,7 +85,8 @@ namespace Chabloom.Billing.Backend
                         y => y.MigrationsAssembly(audience)))
                 .AddAspNetIdentity<TenantUser>();
 
-            if (!string.IsNullOrEmpty(vaultAddress))
+            if (!string.IsNullOrEmpty(vaultAddress) &&
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") != "Development")
             {
                 var keyClient = new KeyClient(new Uri(vaultAddress), new DefaultAzureCredential());
                 var vaultKey = keyClient.GetKey("key-billing").Value;
