@@ -37,7 +37,8 @@ namespace Chabloom.Billing.Backend
         public void ConfigureServices(IServiceCollection services)
         {
             var vaultAddress = Environment.GetEnvironmentVariable("AZURE_VAULT_ADDRESS");
-            if (!string.IsNullOrEmpty(vaultAddress))
+            if (!string.IsNullOrEmpty(vaultAddress) &&
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") != "Development")
             {
                 services.AddAzureClients(builder =>
                 {
